@@ -7,14 +7,105 @@ import java.sql.SQLException;
 
 import me.dec7.user.domain.User;
 
-public abstract class UserDao {
+/*
+ * 1.3.1
+ * 
+ * 추상클래스와 서브클래스와 구분을 통해
+ * 변화의 성격이 다른 관심사를 분리했지만 단점이 많은 '상속' 방법을 이용했다는 점이 문제
+ * 
+ * 관심사가 다르고 변화의 셩격이 다른 두 코드를 Class를 분리하여 분리
+ * 
+ * DB connection을 사용하는 코드를
+ * SimpleConnectionMaker라는 Object를 만들어 저장
+ * 따라서 UserDao는 더 이상 abstract일 필요가 없음
+ */
+public class UserDao {
+	
+	/*
+	 * p75, 하지만 SimpleConnectionMaker를 만든 후 새로운 문제가 발생함
+	 *  1. SimpleConnectionMaker는 특정 DB에 종속됨
+	 *  2. UserDao는 SimpleConnectionMaker라는 특정 Class에 종속됨
+	 *  	- UserDao 코드 수정 없이 DB connection 생성 기능을 변경할 수 없음
+	 *  
+	 *  이렇게 클래스를 분리한 후에 상속처럼 자유로운 확장이 가능토록하기 위해 두 가지 문제를 해결해야함
+	 *  	1. SimpleConnectionMaker의 makeNewConnection() method가 문제
+	 *  		- 다른 SimpleConnectionMaker에서 connection을 가져오는 이름이 다른 경우
+	 *  		- conneciton을 가져오는 코드를 사용하는 get, add 등 수 많은 method를 수정해야함
+	 *  	2.  UserDao가 DB connection을 제공하는 Class를 구체적으로 알고 있어야 하는 문제 
+	 *  		- 만약 SimpleConnectionMaker가 아닌 다른 클래스를 구현시 UserDao를 수정해야함
+	 *  
+	 *  해결: interface 도입
+	 *   - 두 개의 Class가 서로 긴밀하게 연결되지 않도록 중간에 추상적인 느슨한 연결고리 (interface)를 만들어 줌
+	 *   - 추상화는 어떤 공통적인 성격을 뽑아내 이를 따로 분리하는 작업
+	 *   - interface는 자신을 구현한 클래스에 대한 구체적인 정보를 모두 감추어 버림
+	 *   - 결국 구체적 Class 하나를 선택해야겠지만 추상화 (interface)를 사용하는 쪽에서는 사용할 Class가 무엇인지 알 필요 없음   
+	 */
+//	private SimpleConnectionMaker simpleConnectionMaker;
+//	private ConnectionMaker simpleConnectionMaker;
+	
+//	interface를 통해 Object에 접근하므로 구체적인 Class 정보를 알 필요 없음 
+	private ConnectionMaker connectionMaker;
 
+	
+	/*
+	 * 1.3.3
+	 * 하지만 문제는 남아있음
+	 * 
+	 * DB connection을 제공하는 Class에 대한 구체적인 정보는 제거했지만
+	 * 어떤 Class의 Object를 사용할지를 결정하는 코드는 남아 있음
+	 * 
+	 * UserDao 내부에 아직 분리되지 않은 또 다른 '관심사항'이 남아있기 때문
+	 * 
+	 * 분리되지 않은 새로운 관심사항
+	 *  - UserDao가 사용할 ConnectionMaker의 특정 구현 Class사이의 관계를 설정해 주는 것에 대한 관심
+	 *  
 	public UserDao() {
-		super();
+		// simpleConnectionMaker는 상태를 관리하지 않으므로 instance를 한개만 만들어 저장 후 재사용
+		this.connectionMaker = new SimpleConnectionMaker();
+	}
+	 */
+	
+	/*
+	 * UserDao를 사용하는 Client가
+	 * UserDao와 ConnectionMaker 구현 클래스 관계를 결정해주는 기능을 분리해서 두기 적절하 곳임 
+	 * 
+	 * Object 사이의 관게는 Runtime시 한쪽이 다른 Object의 Reference를 가지고 있는 방식으로 구현됨 
+	 * 
+	 * connectionMaker = new SimpleConnectionMaker();
+	 * 
+	 * 위 코드는 SimpleConnectionMaker Object의 레퍼런스를 connectionMaker 변수에 넣어서 사용하게 함으로써
+	 * 두 Object가 '사용'이라는 관계를 맺게 해줌
+	 * 
+	 * UserDao의 모든 코드는 ConnecitonMaker interface 외에는 어떤 Class와 관계를 가져서는 안되게 해야함
+	 * 물론 UserDao가 동작하기 위해서는 특정 Class의 오브젝트와 관계를 맺어야 함
+	 *  - 클래스 사이의 관계가 아닌
+	 *  - 오브젝트 사이의 다이나믹한 관계가 만들어짐
+	 *  	- 중요한 것
+	 *  		- 클래스 사이의 관계는 코드에 다른 클래스의 이름이 나타나기 때문에 발생됨
+	 *  		- 오브젝트 사이의 관계는 코드에 특정 클래스를 전혀 모르더라도
+	 *  		  해당 클래스가 구현한 인터페이스를 사용시, 클래스의 오브젝트를 인터페이스 타입으로 받아서 사용할 수 있음 (다형성) 
+	 */
+	
+	/*
+	 *  Cient가 만든 connectionMaker의 오브젝트를 전달 할 수 있도록 파라미터가 추가된 생성자 구현
+	 *  
+	 *  이로써 UserDao는 SQL을 생성, 실행에 집중되어짐
+	 *  connection과 관련된 방법에 영향을 받지 않음
+	 */
+	public UserDao(SimpleConnectionMaker connectionMaker) {
+		/*
+		 * SimpleConnectionMaker가 사라질 수 있었던 것은
+		 * connectionMaker 구현 클래스의 오브젝트 간 관계를 맺는 책임을 UserDao Client에게 넘겼기 때문
+		 */
+		this.connectionMaker = connectionMaker;
 	}
 
 	public void add(User user) throws SQLException, ClassNotFoundException {
-		Connection c = getConnection();
+		// Connection c = getConnection();
+		// Connection c = this.simpleConnectionMaker.makeNewConnection();
+		
+		// interface에 정의된 method를 사용하므로 Class가 바뀌어도 method 이름을 걱정할 필요는 없음
+		Connection c = this.connectionMaker.makeConnection();
 		
 		PreparedStatement ps = c.prepareStatement("insert into users(id, name, password) values(?, ?, ?)");
 		ps.setString(1, user.getId());
@@ -28,7 +119,9 @@ public abstract class UserDao {
 	}
 
 	public User get(String id) throws SQLException, ClassNotFoundException {
-		Connection c = getConnection();
+		// Connection c = getConnection();
+		// Connection c = this.simpleConnectionMaker.makeNewConnection();
+		Connection c = this.connectionMaker.makeConnection();
 		
 		PreparedStatement ps = c.prepareStatement("select * from users where id = ?");
 		ps.setString(1, id);
@@ -47,83 +140,6 @@ public abstract class UserDao {
 		
 		return user;
 	}
-	
-	
-	/*
-	 * add()와 get()에 중복되어있던 Connection 연결 코드를 getConnection()으로 묶음
-	 * 앞으로 connection을 한 곳에서 관리하게 됨
-	 * 
-	 * 앞서서 UserDao를 test했고 잘 동작했지만 수정 후에도 잘 동작하리라는 보장은 없으므로 재검증이 필요
-	 * 
-	 * main()을 다시 실행하면 test할 수 있지만
-	 * 두 번째 실행부터는 id가 primary key이므로 무조건 예외가 발생함
-	 */
-	
-	/*
-	 * 리팩토링
-	 *  - 기존의 코드를 외부 동작방식에 변화없이 내부 구조를 변경해서 재구성하는 작업 / 기술
-	 *  - 리팩토링시 내부의 설계가 개선되어 코드 이해가 편해지고, 변화에 효율적으로 대응 가능함 
-	 *  
-	 *  메소드 추출 기법
-	 *   - 아래 코드는 connection을 가져오는 기능을 getConnection()이라는 method로 추출함
-	 */
-	
-	/*
-	 * 1.2.3
-	 * 코현코드는 제거되고 추상메소드로 바뀜
-	 * 메소드 구현은 subClass에서 담당 
-	 * 
-	 * Dao는 아래와 같이 두 가지 class 레벨로 독립적으로 구분됨
-	 *  - UserDao : Dao의 핵심기능인 데이터의 등록, 조회 등.. 을의 관심을 담당
-	 *  - UserDaoImpl : DB연결방법을 어떻게 할 것인가?
-	 *  
-	 * 이로써 UserDao는 변경과 확장이 용이해짐
-	 */
-	protected abstract Connection getConnection() throws ClassNotFoundException, SQLException;
-	
-	/*
-	 * Design Pattern
-	 *  - SW 설계시 특정 상황에서 자주 만나는 문제를 해결하기 위해 사용할 수 있는 재사용 가능한 솔루션
-	 *  - Pattern마다 간결한 이름이 있어서 이름만으로 설계 의도와 해결책을 설명할 수 있다는 장점
-	 *  - 주로 객체지향 설계에 관한 것이고 객체지향적 설계 원칙을 이용해 문제 해결
-	 *  
-	 *  - 문제를 해결하기 위한 확장성 추구 방법이 대부분 두 가지 구조로 정리
-	 *  	1. 클래스 상속
-	 *  	2. 오브젝트 합성
-	 *  
-	 *  - 패턴에서 가장 중요한 것
-	 *  	- 각 패턴의 핵심이 담긴 목적, 의도임. 
-	 *  	- 패턴을 적용할 상황, 해결해야할 문제, 솔루션의 구조, 각 요소의 역할, 핵심 의도가 무엇인지 기억해야 함
-	 */
-
-	/*
-	 * Template Method Pattern
-	 *  - SuperClass에서 기본적인 로직의 흐름을 구성하고
-	 *  - 그 기능의 일부를 abstract method나 overriding가능한 protected method 등으로 재구현하여
-	 *  - SubClass에서 구체적인 Object 생성 방법을 결정
-	 *  
-	 *  - 상속을 통해 SuberClass의 기능을 확장할 수 있는 가장 대표적 방법
-	 *  - SuperClass에서 default 기능을 만들고 필요할 때마다 Override 할 수 있는 method는 hook method라고 함
-	 */
-	
-	/*
-	 * Factory Method Pattern
-	 *  - 상속을 통해 기능을 확장하는 패턴
-	 *  - SuperClass 코드에서 SubClass에서 구현할 Method를 호출해서 필요한 Type의 Object를 가져와 사용
-	 *  - 주로 interface type으로 Object를 리턴하므로 SubClass에서 어떤 class를 리턴할지 SuperClass는 알지 못함
-	 *  - SubClass에서 다양한 방법으로 Object 생성방법 / 클래스 결정할 수 있도록 미리 정의한 Method
-	 */
-	
-	/*
-	 * 위 두 패턴은 관리사항이 다른 코드를 분리하여 서로 독립적으로 변경, 확장할 수 있는 가장 효과적방법
-	 * 
-	 * 하지만 '상속'을 이용했다는 단점
-	 *  - 상속을 통한 상하위 클래스 관계는 생각보다 밀접함
-	 *  - SubClass는 SuperClass의 기능을 직접 사용 가능 / 그만큼 SuperClass 변경시 SubClass에 직접적으로 변화가 전달
-	 *  - 확장된 기능인 DB connection 생성 코드를 전혀 다른 Dao Class에 적용할 수도 없음
-	 *  	- 만약 Dao Class가 다양해 질 경우 getConnection() 구현 코드도 Dao Class마다 중복될 수 있음
-	 *  
-	 */
 }
 
 
