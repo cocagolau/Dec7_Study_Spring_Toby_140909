@@ -4,25 +4,75 @@ import java.sql.SQLException;
 
 import me.dec7.user.domain.User;
 
+/*
+ * 1.4.1 Object Factory
+ * 
+ * UserDaoTest는 기존 UserDao가 직접 담당하던 기능 (ConnectionMaker 구현 클래스를 사용을 결정하는 기능)을 맡게됨.
+ * UserDaoTest는 UserDao가 잘 동작하는지 Test를 위한 만들어졌으나 또 다른 책임을 맡게 되었음
+ * 
+ * 분리시킬 기능을 담당할 클래서 : 팩토리
+ */
+
+/*
+ * 1.4.3 제어관계 역전
+ * 
+ * 제어의 역전
+ *  - 프로그램 제어 흐름 구조가 바뀌는 것
+ *  
+ * 기존, main() method
+ *  - 프로그램이 시작되는 시점에서
+ *  	- 다음에 사용할 오브젝트 결정, 
+ *  	- 결정한 오브젝트 생성
+ *  	- 생성된 오브젝트에 있는 메소드 호출.. 등의 작업을 반복
+ *  - 이러한 프로그램 구조에서 각 오브젝트
+ *  	- 프로그램 흐름을 결정하거나 사용할 오브젝트 구성하는 작업에 능동적 참여
+ *  
+ * 제어의 역전
+ *  - 위의 제어 흐름을 거꾸로 뒤집는 것
+ *  	- 오브젝트는 자신이 사용할 오브젝트를 스스로 선택하지 않음
+ *  	- 생성도 않함
+ *  	- 자신이 어떻게 만들어져 어디에 사용되는지 모름
+ *  - 모든 제어 권한을 자신이 아닌 다른 대상에게 위임
+ *  - Servlet
+ *  	- 개발자는 servlet을 개발할 수는 있지만
+ *  	- 그 실행을 개발자가 직접 제어할 수는 없음
+ *  	- 대신 그 제어권한을 가진 Container가 적절한 시점에 Servlet object를 만들고 내부의 method를 호출
+ *  
+ * 초난감 Dao
+ * 	- subclass가 구현한 getConnection()도 제어의 역전 개념이 사용됨
+ *  - subclass는 getConnection()이 언제 불릴지 모름
+ *  
+ *  
+ * Library
+ *  - 라이브러리를 사용하는 코드는 어플리케이션이 흐름을 직접 제어
+ *  
+ * Framework
+ *  - 반제품, 확장해서 사용할 수 있도록 준비된 추상 라이브러리 집합이 아님 
+ *  - 어플리케이션 코드가 framework에 의해 사용됨
+ *  
+ *  - UserDao, DaoFactory도 IoC가 적용
+ *  
+ * IoC
+ *  - Framework, Container 같이 어플리케이션 컴포넌트의 생성, 관계설정, 사용, 생명주기 관리 등을 관리할 존재가 필요
+ */
 public class UserDaoTest {
 
-	/*
-	 * UserDao에서 UserDaoTest로 이동
-	 */
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		
 		/*
-		 * UserDao 오브젝트가 SimpleConnectionMaker 오브젝트를 사용하게 하려면
-		 * 두 클래스의 오브젝트 사이에 Runtime 사용관계 링크 (의존관계)를 맺어주면 됨
+		 * UserDao의 오브젝트를 생성하는 부분은 DaoFactory로 옮겨감
 		 * 
-		 * UserDao Client의 역할은 
-		 * 	- Runtime 오브젝트 관계를 갖는 구조로 만들어주는 것
-		 * 
-		 * 새로운 관심사항을 UserDao Client로 넘기면 됨
-		 * 
-		 */
 		SimpleConnectionMaker connectionMaker = new SimpleConnectionMaker();
 		UserDao dao = new UserDao(connectionMaker);
+		*/
+		
+		/*
+		 * UserDaoTest는 더 이상 UserDao가 어떻게 만들어지는지 관심이 없음
+		 * 
+		 * UserDao, ConnectionMaker는 각각 핵심적 데이터 로직과 기술 로직을 담당
+		 * DaoFactory는 오브젝트들을 구성, 그 관계를 정의하는 책임
+		 */
+		UserDao dao = new DaoFactory().userDao();
 		
 		User user = new User();
 		user.setId("dec7");
@@ -39,40 +89,5 @@ public class UserDaoTest {
 		System.out.println(user2.getId() + "조회 성공");
 
 	}
-	/*
-	 * 객체지향 설계원칙 (SOLID)
-	 *  - 단일 책임 원칙
-	 *  - 개방 폐쇄 원칙
-	 *  - 리스코프 치환 원칙
-	 *  - 인터페이스 분리 원칙
-	 *  - 의존관계 역전 원칙
-	 */
-	
-	/*
-	 * 1.3.4 원칙과 패턴
-	 * 
-	 * 개발 폐쇄 원칙 (OCP, Open-Closed Principle)
-	 *  - 깔끔한 설계를 위해 적용 가능한 객체지향 설계원칙 중 한가지
-	 *  - 정의: 클래스나 모듈은 확장에 열려있고 변경에는 닫혀있어야 한다.
-	 * 
-	 * 
-	 * 높은 응집도와 낮은 결합도
-	 *  - 높은 응집도: 하나의 모듈/클래스가 하나의 책임/관심사에 집중됨
-	 *  	- 작업은 항상 전체적으로 일어남
-	 *  	- 무엇을 변경할 지 명확 
-	 *  	- 기능에 영향을 주지 않음
-	 *  - 낮은 결합도
-	 *  	- 책음/관심사가 다른 오브젝트/모듈과는 느슨하게 연결되어야 함
-	 *  	- 결합도가 낮아지면 변화 대응 속도는 빨라지고, 구성이 깔끔하며, 확장도 용이함
-	 *  
-	 * 전략패턴
-	 *  - 개선한 UserDaoTest - UserDao - ConnectionMaker 구조에 해당함
-	 *  - 자신의 기능 맥락에서 필요에 따라 변경이 필요한 알고리즘 인터페이시를 통해 통째로 외부로 분리 후
-	 *    이를 구현한 구체적인 알고리즘 클래스를 필요에 따라 바꾸서 사용할 수 있게 한 패턴
-	 *    
-	 *  UserDao는 전략 패턴의 컨텍스트에 해당함
-	 *   - DB 연결방식이라는 알고리즘을 ConnectionMaker라는 interface로 정의
-	 *   - 이를 구현한 Class로 전략을 바꾸어가면서 사용
-	 */
 	
 }
