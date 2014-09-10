@@ -7,9 +7,6 @@ import java.sql.SQLException;
 
 import me.dec7.user.domain.User;
 
-/*
- * 제어의 역전 (IoC: Inverse Of Control)
- */
 public class UserDao {
 	private ConnectionMaker connectionMaker;
 

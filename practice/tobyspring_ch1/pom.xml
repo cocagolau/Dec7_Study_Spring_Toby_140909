@@ -12,6 +12,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<org.springframework.version>4.0.5.RELEASE</org.springframework.version>
 	</properties>
 
 	<dependencies>
@@ -29,10 +30,17 @@
 			<artifactId>mysql-connector-java</artifactId>
 			<version>5.1.30</version>
 		</dependency>
+		
+		<!-- spring -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>${org.springframework.version}</version>
+		</dependency>
 	</dependencies>
 	
 	<build>
-		<finalName>jwp_qna</finalName>
+		<finalName>toby</finalName>
 
 		<resources>
 		
