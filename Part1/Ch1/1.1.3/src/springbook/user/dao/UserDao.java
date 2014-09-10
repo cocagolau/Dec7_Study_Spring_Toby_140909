@@ -11,11 +11,9 @@ import springbook.user.domain.User;
 public class UserDao {
 	public void add(User user) throws ClassNotFoundException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver");
-		Connection c = DriverManager.getConnection("jdbc:mysql://localhost/springbook?characterEncoding=UTF-8", "spring",
-				"book");
+		Connection c = DriverManager.getConnection("jdbc:mysql://localhost/springbook?characterEncoding=UTF-8", "spring", "book");
 
-		PreparedStatement ps = c.prepareStatement(
-			"insert into users(id, name, password) values(?,?,?)");
+		PreparedStatement ps = c.prepareStatement("insert into users(id, name, password) values(?,?,?)");
 		ps.setString(1, user.getId());
 		ps.setString(2, user.getName());
 		ps.setString(3, user.getPassword());
@@ -26,13 +24,10 @@ public class UserDao {
 		c.close();
 	}
 
-
 	public User get(String id) throws ClassNotFoundException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver");
-		Connection c = DriverManager.getConnection("jdbc:mysql://localhost/springbook?characterEncoding=UTF-8", "spring",
-				"book");
-		PreparedStatement ps = c
-				.prepareStatement("select * from users where id = ?");
+		Connection c = DriverManager.getConnection("jdbc:mysql://localhost/springbook?characterEncoding=UTF-8", "spring", "book");
+		PreparedStatement ps = c.prepareStatement("select * from users where id = ?");
 		ps.setString(1, id);
 
 		ResultSet rs = ps.executeQuery();
@@ -54,18 +49,18 @@ public class UserDao {
 
 		User user = new User();
 		user.setId("whiteship");
-		user.setName("¹é±â¼±");
+		user.setName("ï¿½ï¿½â¼±");
 		user.setPassword("married");
 
 		dao.add(user);
-			
-		System.out.println(user.getId() + " µî·Ï ¼º°ø");
-		
+
+		System.out.println(user.getId() + " ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½");
+
 		User user2 = dao.get(user.getId());
 		System.out.println(user2.getName());
 		System.out.println(user2.getPassword());
-			
-		System.out.println(user2.getId() + " Á¶È¸ ¼º°ø");
+
+		System.out.println(user2.getId() + " ï¿½ï¿½È¸ ï¿½ï¿½ï¿½ï¿½");
 	}
 
 }

@@ -1,6 +1,8 @@
-**/bin/
-**/target/
-**/.settings/
-**/.classpath
-**/.project
-**/*.class
+bin/
+target/
+.settings/
+.classpath
+.project
+*.class
+build/
+*.DS_Store
