@@ -8,106 +8,91 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 
-
-/*
- * 1.5.1 / 스프링의 IoC
- *  - 스프링을 많은 기능을 제공하지만 그 중 핵심은
- *    ApplicationContext 혹은 BeanFactory 이다. / DaoFactory의 일반화 버전
- */
-
-/*
- * Bean
- *  - Spring이 제어권을 가지고 직접 만들고 관계를 부여하는 Object
- *  - managed object (관리되는 오브젝트)라 불리기도 함
- *  - Object 단위의 Application Component
- *  - Spring Bean은 Spring Container가 생성, 관계설정, 사용 등을 제어해주는 IoC가 적용된 Object
- *  - application에서 만들어지는 모든 object가 bean이 아니고 spring이 직접 생성, 제어를 담당하는 object만 bean임
- */
-
-/*
- * BeanFactory
- *  - Spring의 IoC를 담당하는 핵심 container
- *  - Spring에서 Bean의 등록, 생성, 조회, 반환, 관계설정 등 부가적인 bean을 관리하는 기능 담당
- *  - 이를 확장한 ApplicationContext를 주로 사용
- *  - 따라서 BeanFactory와 ApplicationContext는 동일하다고 봐도 됨
- *  
- *  - Bean의 생성, 관계를 설정하는 IoC의 기본기능에 초점을 맞춘 의미
- */
-
-/*
- * ApplicationContext
- *  - BeanFactory를 확장한 IoC Container
- *  - 별도의 정보를 참고하여 Bean 생성, 관계설정 등 제어작업 총괄
- *  - 설정정보를 만드는 방법은 여러가지 존재함
- *  - Application 전반에 걸쳐 모든 구성요소의 제어 작업을 담당하는 IoC 엔진의 의미가 부각됨
- */
-
-/*
- * 설정정보, 설정 메타정보
- *  - ApplicationContext, BeanFactory가 IoC를 적용하기 위해 사용하는 메타 정보 
- *  - IoC container에 의해 관리되는 Application Object를 생성하고 구성할 때 사용됨 
- */
-
-/*
- * ApplicationContext, BeanFactory가 사용할 설정정보라는 표시
- *  - Spring이 BeanFactory를 위한 Object 설정을 담당하는 클래스임을 인식할 수 있도록 함
- */
-
-/*
- * Container, IoC Container
- *  - IoC방식으로 Bean을 관리한다는 의미
- *  - Container라는 말 자체가 IoC의 개념을 담고 있음
- *  - IoC container는 BeanFactory 관점에서
- *  - Container/Spring Container는 ApplicationContextr 관점에서 봄
- */
 public class UserDaoTest {
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
-		
 		/*
-		 * 이제 DaoFactory를 설정정보로 사용하는 ApplicationContext를 생성
-		 * 
-		 * ApplicationContext는 ApplicationContext 타입의 Object
-		 * 
-		 * AnnotationConfigApplicationContext
-		 *  - @Configuration이 붙은 자바 코드를 설정정보로 이용하기 위한 Class
+		 * DaoFactory와 Spring ApplicationContext를 사용시 중요한 차이점
+		 *  - 호출시 반환되는 Object는 동일한가?
+		 *  
+		 *  - DaoFactory는 호출할 때마다 새로운 UserDao object 생성
+		 *  - Spring ApplicationContext는 여러번 호출하더라도 동일한 object 반환
 		 */
 		
 		/*
-		 * ApplicationContext 동작방식
-		 *  - IoC Container 혹은 Spring Container라 부름
-		 *  - ApplicationContext interface 구현
-		 *  - ApplicationContext는 BeanFactory interface를 상속했으므로 BeanFactory의 일종
-		 *  - IoC를 적용해서 관리할 모든 Object의 생성, 관계설정을 담당함 (제한적이이 않음)
-		 *  - 대신 생성, 관계정보를 별도의 설정정보를 통해 얻음
-		 *  
-		 *  1. ApplicationContext는 DaoFactory를 설정정보로 등록
-		 *  2. @Bean이 붙은 method 이름을 가져와 Bean 목록을 만듦
-		 *  3. Client가 ApplicationContext의 getBean() 호출시 bean 목록에서 존재여부 찾고 있을 경우 Bean을 생성 후 반환
-		 *  
-		 * DaoFactory가 아닌 ApplicationContext를 사용시 장점 
-		 *  - Client는 구체적인 factory class를 알 필요 없다.
-		 *  	- Application이 발전하여 DaoFactory같은 IoC를 적용한 Object도 추가됨
-		 *  	- ApplicationContext 사용시 ObjectFactory가 많아져도 신경쓸 필요 없음
-		 *  - 종합 IoC 서비스를 제공해줌
-		 *  	- Object가 만들어지는 방식, 시점, 전략을 다르게 설정할 수 있음
-		 *  	- 부가적으로 자동생성, 오브젝트 후처리, 정보 조합, 설정방식 다변화, 인터셉팅 등
-		 *  	  오브젝트를 효과적으로 활용할 수 있는 다양한 기능을 제공
-		 *  	- Bean이 사용할 수 있는 기반기술 서비스, 외부서비스 연동 등.. container 차원에서 제공
-		 *  - 다양한 방식으로 Bean 검색 가능
-		 *  	- getBean()을 이용해 검색
-		 *  	- 이름, 타입, 특별한 어노테이션으로 되어있는 bean을 찾을 수 있음  
+		 * Object의 동일성과 동등성
+		 *  - 두 Object가 같은가?
+		 *  - 동일성
+		 *  	- ==
+		 *  	- 두 Object가 완전히 동일할 때
+		 *  	- 하나의 Object만 존재, 두 개의 Object reference 변수를 가지고 있을 때
+		 *  	
+		 *  - 동등성
+		 *  	- equals()
+		 *  	- 두 Object가 동일한 정보를 담고 있을 때
+		 *  	- 두 개의 서로 다른 Object가 메모리상에 존재, 동등성 규칙에 따라 동등하다고 판별한 뿐 
 		 */
 		ApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
-		
-		/*
-		 *  getBean() method
-		 *   - 준비된 Object를 가져올 수 있음
-		 *   - 기본적으로 Object 타입을 반환
-		 *   - 제네릭 메소드방식을 이용해 두번째 인자로 반환타입을 전달하면 Casting하지 않아도 됨
-		 */
 		UserDao dao = context.getBean("userDao", UserDao.class);
 		
+		/*
+		 * ApplicationContext
+		 *  - IoC container
+		 *  - singleton registry
+		 *  	- 싱글톤을 저장하고 관리
+		 *  	- spring은 기본적으로 내부에서 생성하는 bean object를 모두 싱글톤으로 생성
+		 *  	- singleton pattern과 그 구현법이 다름
+		 */
+		
+		/*
+		 * Server Application에서 Singleton
+		 *  - 대규모 서버환경은 서버 한 대, 초당 수백번의 브라우져 요청을 처리
+		 *  - 그 때마다 각 로직을 담당하는 Object를 생성시 큰 부하가 발생
+		 *  - enterpise 분야에서 서비스 object 개념을 사용
+		 *  	- 따라서 servlet은 대부분 멀티스레드 환경에서 singleton으로 동작
+		 *  	- servlet class 당 하나의 object만 생성하고 요청을 담당하는 여러 스레드에서 하나의 object공유해 사용
+		 */
+		
+		/*
+		 * Singleton Pattern
+		 *  - 어떤 class를 어플리케이션 내에서 제한된 instance 개수 혹은 하나만 존재하도록 강제하는 패턴
+		 *  - 이 class의 object는 어플리케이션 내에서 전역적으로 접근 가능
+		 *  - 단일 object만 존재하야하고, 이를 어플리케이션 여러 곳에서 공유하는 경우 사용됨
+		 *  
+		 * 한계
+		 *  - priavte 생성자로 상속 불가
+		 *  	- 상속, 다형성 등 객체지향의 특성 이용 불가
+		 *  	- 스태틱 필드와 메소드를 사용
+		 *  - 테스트가 힘듦
+		 *  	- 초기화시 오브젝트 주입하기 힘듦 
+		 *  	- 만들어지는 방식이 제한적이라 테스트용 목 오브젝트로 대체 힘듦
+		 *  - 서버환경에서 싱글톤이 하나만 만들어지는 것을 보장하기 어려움 
+		 *  	- jvm이 분산되어있을 경우 독립적으로 object가 생성됨
+		 *  - 전역상태를 만들 수 있으므로 좋지 않음 
+		 *  	- static method를 이용하고 어플리케이션 모든 공간에서 접근 가능하여 자연스럽게 전역 상태로 사용되기 쉬움
+		 */
+		
+		/*
+		 * Singleton Registry
+		 *  - spring이 singleton 형태의 오브젝트를 생성, 관리하는 singleton container
+		 *  - private 생성자를 사용하지 않고 평범한 자바 클래스를 singleton으로 활용
+		 *  - 객체지향적 설계방식, 원칙, 디자인 패턴을 적용하는데 제약이 없다는 점이 가장 중요
+		 */
+		
+		/*
+		 * 1.6.3 / Spring bean의 scope
+		 * 
+		 * bean의 scope
+		 *  - bean이 생성, 존재, 적용되는 범위
+		 *  - 기본 scope는 singleton
+		 *  - prototype
+		 *  	- container에 bean을 요청할 때마다 새로운 object를 생성
+		 *  - request
+		 *  	- http요청이 생길 때마다 생성
+		 *  - session
+		 *  	- web의 session scope와 유사
+		 * 
+		 */
 		User user = new User();
 		user.setId("dec7");
 		user.setName("동규");
