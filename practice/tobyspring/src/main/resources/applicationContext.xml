@@ -1,60 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- 
-	ApplicationContext가 사용하는 XML 설정정보
-	XML에서 bean의 의존관계 정보를 이용하는 IoC/DI 작업시 GenerixXmlApplicationContext를 사용
-	
-	GenericXmlApplicationContext 생성시 파라미터로 XML 파일의 classpath를 지정하면 됨
-	XML 설정파일은 관례에 따라 applicationContext.xml을 사용
- -->
- 
- 
-<!-- 
-	spring ApplicationContext는 XML에 담긴 DI 정보를 활용 가능
-	
-	DI 정보가 담긴 XML파일은 <beans>를 root element로 사용
-	<beans>에는 여러개의 <bean>을 정의할 수 있음
-	
-	@Configuration == <beans>
-	@Bean == <bean>
-
- -->
-<!--
-	DTD와 스키마
-	
-	XML문서는 미리 정해진 구조를 따라 작성되었는지 검사할 수 있음
-	XML문서의 구조를 정의하는 방법에는 DTD와 스키마가 있음 / spring은 모두 지원
-	
-	DTD를 사용시 <beans> 앞에 아래와 같은 DTD선언을 준다.
-	<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
-	
-	Spring은 DI를 위한 <beans> <bean> 외에도 특별한 목적을 위해 별도의 태그를 사용할 수 있도록 함.
-	이 tag들은 별도의 별개의 스키마 파일에 정의되어 있고 독립적인 네임스페이스를 사용해야함.
-	
-	특별한 네이스페이스를 사용하기 위해 스키마를 사용해야하며, DTD보다 스키마를 사용함이 바람직 
- -->
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
 	
-	<!-- 
-		id: bean의 이름
-		class: bean의 class
-		dependent object: bean의 생성자나 수장자 메소드를 통해 주입
-	 -->
-	<!-- <bean id="connectionMaker" class="me.dec7.user.dao.SimpleConnectionMaker" /> -->
-	
 	<bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
-		<!-- 값 주입 -->
-		<!--
-			com.mysql.jdbc.Driver는 class 타입이지만 value로 적용됨
-			이것이 가능한 이유는 spring이 property의 값을 setter method parameter type을 참고해 적절히 변환하기 때문
-			
-			spring은 value에 지정한 텍스트를 적절한 자바타입으로 변환함
-			 - Integer, Double, String, boolean
-			 - Class, URL, File, Charset 등..
-			 - List, Map, Set, Properties 등 배열타입도 가능. 
-		 -->
 		<property name="driverClass" value="com.mysql.jdbc.Driver" />
 		<property name="url" value="jdbc:mysql://localhost/springbook" />
 		<property name="username" value="spring" />
@@ -62,20 +12,6 @@
 	</bean>
 	
 	<bean id="userDao" class="me.dec7.user.dao.UserDao">
-		<!-- 
-			property tag로 의존 오브젝트를 정의
-			 - 1개 이상 
-			 - property name은 메소드 이름에서 set을 제외한 나머지 부분
-			 - property tag는 name과 ref라는 두 개의 attribute를 가짐
-			 	- name: 프로퍼티의 이름
-			 	- ref: 수정자 메소드를 통해 주입해줄 오브젝트의 이름 / bean
-		 -->
-		 <!--
-		 	name과 ref는 그 의미가 다르므로 이름이 같더라도 어떤 차이가 있는지 구별할 수 있어야 함
-		 	보통 bean의 id(이름)은 interface 이름을 따르는 경우가 많음
-		 	
-		 	bean의 id를 변경하는 경우 참조된 ref의 값도 변경해야함 
-		  -->
 		<property name="dataSource" ref="dataSource" />
 	</bean>
 	
