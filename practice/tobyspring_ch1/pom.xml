@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>me.dec7</groupId>
-	<artifactId>tobyspring_ch1</artifactId>
+	<artifactId>tobyspring</artifactId>
 	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
-	<name>tobyspring_ch1</name>
+	<name>tobyspring</name>
 	<url>http://maven.apache.org</url>
 
 	<properties>
@@ -45,7 +45,7 @@
 	</dependencies>
 	
 	<build>
-		<finalName>toby</finalName>
+		<finalName>tobyspring</finalName>
 
 		<resources>
 		
