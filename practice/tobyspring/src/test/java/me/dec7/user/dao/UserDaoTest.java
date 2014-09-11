@@ -7,50 +7,66 @@ import me.dec7.user.domain.User;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.GenericXmlApplicationContext;
 
+
 /*
- * Spring IoC Container
- *  - Dependency Injection / DI container
+ * spring이 개발자에게 제공하는 가장 중요한 가치
+ *  1. 객체지향
+ *  2. 테스트
  *  
- * DI
- *  - Object에 다른 Object를 주입할 수 있는건 아님 / Object의 reference가 전달될 뿐
- *  - 오브젝트 레퍼런스를 외부로부터 주입(제공)받고 이를 통해 오브젝트와 다이나믹하게 의존관계가 만들어지는 것이 핵심
+ *  Spring의 핵심은 IoC/DI는 오브젝트으 설계, 생성, 관계, 사용에 관한 기술
+ *   - 대규모 어플리케이션을 객체지향적 방법으로 효과적으로 구현
+ *   - 만들어진 코드를 확신할 수 있게 하고
+ *   - 변화에 유연하게 대처할 수 있도록 하는 기술
  */
 
 /*
- * DI 받는다
- *  - 외부에서 파라미터로 오브젝트를 전달했다고 해서 모두 DI가 아님을 주의 
- *  - 주입받은 메소드 파라미터가 특정 클래스 타입으로 고정시 DI가 일어날 수 없음
- *  - DI에서 말하는 주입
- *  	- 다이나믹하게 구현 클래스를 결정
- *  	- 제공받을 수 있도록 interface 타입의 파라미터를 통해 이뤄져야 함
- *  	- 따라서 주입받는다는 표현 --> DI 받는다.
+ * UserDaoTest 덕분에
+ *  - add(), get() method의 결과를 눈으로 확인가능
+ *  - 다양한 방법으로 수정해도 기능이 동작하는지 확인
+ *  - 기능이 돌아갔기 때문에 코드를 더욱 효율적으로 수정할 수 있었음
+ *  
+ * 테스트는 예상이 맞았는지 확인하는 작업
+ * 
+ * 특징
+ *  - main() method 사용
+ *  - 테스트 대상인 userDao object를 가져와 method 호출
+ *  - 테스트 입력값인 user를 직접 만들어 사용
+ *  - 결과를 콘솔에 출력
+ *  - 에러가 없다면 성공메시지가 콘솔에 출력
+ *  
+ * 작은 단위의 테스트
+ *  - 테스트 단위가 커질 경우 수행과정도 복잡해지고 오류발생시 원인을 찾기도 어려움
+ *  - 관심사의 분리는 테스트에도 적용
+ *  - UserDaoTest는 한가지 관심사에 집중됨
+ * 
+ * Unit Test, 단위 테스트
+ *  - 작은 단위의 코드에 대해 테스트를 수행한 것
+ *  - 단위
+ *  	- 충분히 하나의 관심에 집중해서 테스트할 만한 범위
+ *  - 이유
+ *  	- 개발자가 설계하고 만든 코드가 원래 의도대로 동작하는지 스스로 빨리 확인받기 위해서
+ *  	- 따라서 대상와 조건이 간단, 명확할 수록 좋음
+ *  
+ * 자동수행 테스트 코드는 중요
+ *  - 수행이 간편하므로 자주 반복할 수 있음
+ *  - 어플리케이션을 구성하는 클래스 안에 테스트 코드를 넣기보다 테스트용 클래스를 따로 만드는 것이 좋음
+ *  
+ * 지속적인 개선, 점진적인 개발을 위한 테스트
+ *  - 테스트는 완성도 높은 코드를 위해 중요
+ *  - 수정하는 과정에서 기능이 잘 동작한다는 것을 지속적으로 확인할 수 있음
+ */
+
+/*
+ * UserDaoTest 문제점
+ *  - 테스트 진행과정이 모두 수동
+ *  	- 결과를 눈으로 확인
+ *  
+ *  - 실행의 번거로움
+ *  	- 테스트당 다른 main()을 보유, dao가 늘어나면 main()도 늘어남
  */
 public class UserDaoTest {
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
-		
-		/*
-		 * ApplicationContext 설정 방식을 변경
-		 * 
-		ApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
-		
-		GenericXmlApplicationContext 외에도
-		ClassPathXmlApplicationContext를 이용해 XML로 설정정보를 가져오는 ApplicationContext를 만들 수 있음
-		
-		GenericXmlApplicationContext
-		 - classpath뿐 아니라 다양한 소스로부터 설정파일을 읽어올 수 있음
-		 
-		ClassPathXmlApplicationContext
-		 - Xml파일을 클래스패스에서 가져올 때 사용할 수 있는 편리한 기능 추가됨
-		 - ex) 기능 중 클래스패스의 경로정보가 클래스에서 가져오도록 하는 기능
-		 	- springbook.user.dao 패키지 내부의 daoContext.xml 설정파일시
-		 		- GenericXmlApplicationContext
-		 			- root로부터 파일의 위치를 지정해야함.
-		 			- new GenericXmlApplicationContext("springbook/user/dao/daoContext.xml");
-		 		- ClassPathXmlApplicationContext
-		 			- daoContext.xml과 같은 클래스패스위에 있는 UserDao를 함께 제공
-		 			- new ClassPahtXmlApplicationContext("daoContext.xml", UserDao.class);
-		*/
 		ApplicationContext context = new GenericXmlApplicationContext("classpath:/applicationContext.xml");
 		UserDao dao = context.getBean("userDao", UserDao.class);
 		
