@@ -5,6 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import javax.sql.DataSource;
+
 import me.dec7.user.domain.User;
 
 
@@ -24,7 +26,9 @@ import me.dec7.user.domain.User;
  * 
  */
 public class UserDao {
-	private ConnectionMaker connectionMaker;
+	// DataSource 로 변경
+	// private ConnectionMaker connectionMaker;
+	private DataSource dataSource;
 
 	/*
 	 * 1.7.2 / Runtime 의존관계 설정
@@ -70,12 +74,14 @@ public class UserDao {
 	 *  setter method DI 방식을 적용
 	 *  DaoFactory도 함께 수정해야함
 	 */
-	public void setConnectionMaker(ConnectionMaker connectionMaker) {
-		this.connectionMaker = connectionMaker;
+	public void setDataSource(DataSource dataSource) {
+//		this.connectionMaker = connectionMaker;
+		this.dataSource = dataSource;
 	}
 
 	public void add(User user) throws SQLException, ClassNotFoundException {
-		Connection c = this.connectionMaker.makeConnection();
+		// Connection c = this.connectionMaker.makeConnection();
+		Connection c = this.dataSource.getConnection();
 		
 		PreparedStatement ps = c.prepareStatement("insert into users(id, name, password) values(?, ?, ?)");
 		ps.setString(1, user.getId());
@@ -89,7 +95,8 @@ public class UserDao {
 	}
 
 	public User get(String id) throws SQLException, ClassNotFoundException {
-		Connection c = this.connectionMaker.makeConnection();
+		// Connection c = this.connectionMaker.makeConnection();
+		Connection c = this.dataSource.getConnection();
 		
 		PreparedStatement ps = c.prepareStatement("select * from users where id = ?");
 		ps.setString(1, id);

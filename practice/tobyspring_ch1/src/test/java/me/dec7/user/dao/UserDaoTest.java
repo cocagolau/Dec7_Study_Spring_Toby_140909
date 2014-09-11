@@ -5,7 +5,7 @@ import java.sql.SQLException;
 import me.dec7.user.domain.User;
 
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.support.GenericXmlApplicationContext;
 
 /*
  * Spring IoC Container
@@ -28,7 +28,30 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 public class UserDaoTest {
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
+		
+		/*
+		 * ApplicationContext 설정 방식을 변경
+		 * 
 		ApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
+		
+		GenericXmlApplicationContext 외에도
+		ClassPathXmlApplicationContext를 이용해 XML로 설정정보를 가져오는 ApplicationContext를 만들 수 있음
+		
+		GenericXmlApplicationContext
+		 - classpath뿐 아니라 다양한 소스로부터 설정파일을 읽어올 수 있음
+		 
+		ClassPathXmlApplicationContext
+		 - Xml파일을 클래스패스에서 가져올 때 사용할 수 있는 편리한 기능 추가됨
+		 - ex) 기능 중 클래스패스의 경로정보가 클래스에서 가져오도록 하는 기능
+		 	- springbook.user.dao 패키지 내부의 daoContext.xml 설정파일시
+		 		- GenericXmlApplicationContext
+		 			- root로부터 파일의 위치를 지정해야함.
+		 			- new GenericXmlApplicationContext("springbook/user/dao/daoContext.xml");
+		 		- ClassPathXmlApplicationContext
+		 			- daoContext.xml과 같은 클래스패스위에 있는 UserDao를 함께 제공
+		 			- new ClassPahtXmlApplicationContext("daoContext.xml", UserDao.class);
+		*/
+		ApplicationContext context = new GenericXmlApplicationContext("classpath:/applicationContext.xml");
 		UserDao dao = context.getBean("userDao", UserDao.class);
 		
 		User user = new User();

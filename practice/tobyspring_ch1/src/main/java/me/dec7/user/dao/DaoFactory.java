@@ -1,7 +1,10 @@
 package me.dec7.user.dao;
 
+import javax.sql.DataSource;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.datasource.SimpleDriverDataSource;
 
 /*
  * 1.7.3 / Dependency Lookup (의존관계 검색)
@@ -63,7 +66,7 @@ public class DaoFactory {
 		
 		// setter method DI 방식으로 수정되어 설정도 변경
 		UserDao dao = new UserDao();
-		dao.setConnectionMaker(connectionMaker());
+		dao.setDataSource(dataSource());
 		
 		return dao;
 	}
@@ -91,6 +94,18 @@ public class DaoFactory {
 	@Bean
 	public ConnectionMaker connectionMaker() {
 		return new CountingConnectionMaker(realConnectionMaker());
+	}
+	
+	@Bean
+	public DataSource dataSource() {
+		SimpleDriverDataSource dataSource = new SimpleDriverDataSource();
+		
+		dataSource.setDriverClass(com.mysql.jdbc.Driver.class);
+		dataSource.setUrl("jdbc:mysql://localhost/springbook");
+		dataSource.setUsername("spring");
+		dataSource.setPassword("book");
+		
+		return dataSource;
 	}
 	
 }
