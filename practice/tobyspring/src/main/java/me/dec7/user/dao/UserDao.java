@@ -54,8 +54,10 @@ public class UserDao {
 	public void setDataSource(DataSource dataSource) {
 		this.dataSource = dataSource;
 	}
-
-	public void add(User user) throws SQLException {
+	
+//	public void add(User user) throws SQLException {
+	public void add(final User user) throws SQLException {
+		/*
 		Connection c = null;
 		PreparedStatement ps = null;
 		
@@ -87,6 +89,85 @@ public class UserDao {
 				} catch (SQLException sqle) { }
 			}
 		}
+		*/
+		
+		/*
+		 * 3.3.2, 문제점 발생
+		 * 
+		 * 문제점
+		 *  1. Dao method마다 새로운 StatementStrategy를 구현해야함
+		 *  	- class 개수가 많아짐, runtime시 DI할 수 있다는 장점을 제외하면 .. template method pattern보다 나을게 없음
+		 *  
+		 *  2. Dao method에서 StatementStrategy에 전달할 정보
+		 *  	- User외 다른 부가정보는, 오브젝트를 전달받는 생성자와 instacne 변수를 계속 만들어줘야함,
+		 *  
+		 * 해결방법
+		 *  1. 로컬 클래스
+		 *  	- UserDao의 내부 클래스로 정의
+		 */
+		
+		/*
+		class InnerAddStatement implements StatementStrategy {
+			/*
+			 * p230, 중첩 클래스의 종류
+			 *  - 다른 클래스의 내부에 정의되는 클래스
+			 *  
+			 *  1. static class
+			 *  	- 독립적으로 오브젝트로 만들어질 수 있음
+			 *  
+			 *  2. inner class
+			 *  	- 자신의 정의된 클래스 오브젝트 안에서만 만들어질 수 있음
+			 *  	1) member inner class
+			 *  		- 멤버 필드처럼, 오브젝트 레벨에서 정의됨
+			 * 		2) local class
+			 * 			- 메소드 레벨에서 정의
+			 *  	3) anonymous inner class
+			 *  		- 이름을 갖지 않는 클래스
+			 *  		- 범위는 선언된 위치에 따라 다름
+			 *
+			
+			/*
+			 *내부 클래스이므로 자신이 선언된 곳의 정보에 접근 가능
+			 *생성자를 통해 정보를 전달할 필요가 없음
+			 *다만, 내부 클래스에서 외부 변수를 사용하려면 final로 선언해야함
+			 *
+			User user;
+			public InnerAddStatement(User user) {
+				this.user = user;
+			}
+			*
+
+			@Override
+			public PreparedStatement makePrepareStatement(Connection c) throws SQLException {
+				PreparedStatement ps = c.prepareStatement("insert into users(id, name, password) values(?, ?, ?)");
+				
+				ps.setString(1, user.getId());
+				ps.setString(2, user.getName());
+				ps.setString(3, user.getPassword());
+				
+				return ps;
+			}
+		}*/
+		
+//		StatementStrategy stmtStrategy = new InnerAddStatement(user);		
+//		StatementStrategy stmtStrategy = new InnerAddStatement();
+		/*
+		 * p231, 익명 내부 클래스
+		 *  - 내부 클래스를 조금 더 간결하게 바꿀 수 있음
+		 */
+		jdbcContextWithStatementStrategy(new StatementStrategy() {
+
+			@Override
+			public PreparedStatement makePrepareStatement(Connection c) throws SQLException {
+				PreparedStatement ps = c.prepareStatement("insert into users(id, name, password) values(?, ?, ?)");
+				
+				ps.setString(1, user.getId());
+				ps.setString(2, user.getName());
+				ps.setString(3, user.getPassword());
+				
+				return ps;
+			}	
+		});
 	}
 
 	public User get(String id) throws SQLException, ClassNotFoundException {
@@ -271,9 +352,20 @@ public class UserDao {
 	 */
 	public void deleteAll() throws SQLException {
 		// 선정한 전략 클래스 오브젝트 생성
-		StatementStrategy stmtStrategy = new DeleteAllStatement();
+//		StatementStrategy stmtStrategy = new DeleteAllStatement();
 		// 컨텍스트 호출, 전략 오브젝트 전달
-		jdbcContextWithStatementStrategy(stmtStrategy);
+//		jdbcContextWithStatementStrategy(stmtStrategy);
+		
+		jdbcContextWithStatementStrategy(new StatementStrategy() {
+
+			@Override
+			public PreparedStatement makePrepareStatement(Connection c) throws SQLException {
+				PreparedStatement ps = c.prepareStatement("delete from users");
+				
+				return ps;
+			}
+		
+		});
 	}
 	
 	
@@ -370,7 +462,6 @@ public class UserDao {
 				} catch (SQLException sqle) { }
 			}
 		}
-		
 	}
 }
 
