@@ -66,6 +66,7 @@ public class UserDaoTest {
 	
 //	@Autowired
 	private UserDao dao;
+	private JdbcContext jdbcContext;
 	
 	private User user1;
 	private User user2;
@@ -80,14 +81,22 @@ public class UserDaoTest {
 		 * 3번째 방법
 		 */
 		dao = new UserDao();
+		jdbcContext = new JdbcContext();
+		
 		DataSource dataSource = new SingleConnectionDataSource(
 				"jdbc:mysql://localhost/springbooktest",
 				"spring",
 				"book",
 				true);
+		
+		jdbcContext.setDataSource(dataSource);
 		dao.setDataSource(dataSource);
-		
-		
+		/*
+		 * JdbcContext의 수동 DI를 통해 외부 노출이 사라짐
+		 
+		dao.setJdbcContext(jdbcContext);
+		*/
+
 		
 		// 테스트에서 UserDao가 사용할 DataSource 오브젝트를 직접 생성
 		/*
