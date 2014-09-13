@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import javax.sql.DataSource;
 
@@ -14,59 +15,9 @@ import org.junit.Test;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
-/*
- * SimpleDriverDataSource와 DataSource로 선언하는 방법 중 어느방법이 좋은가?
- *  - bean을 어느 용도로 사용할지에 따라 다름
- * 
- * DataSource
- *  - 단순히 DataSource에 정의된 메소드를 테스트에서 사용하고 싶은 경우
- *  - bean의 구현 클래스가 변경되더라도 테스트 코드는 변경 없음
- *  
- * SimpleDriverDataSource
- *  - 이 타입 그자체의 오브젝트에 관심이 있는 경우
- *  
- * 하지만 보통 interface를 두고 DI를 적용해야함
- *  1. 모든 것은 항상 바뀐다.
- *  2. interface를 두고 DI를 적용하면 다른 서비스도 적용 가능
- *  	- ex) DB connection 수를 counting하는 코드
- *  	- 무언가 새로운 기능을 위해 코드를 수정할 필요는 없음
- *  	- 추가했던 기능도 설정파일로 간단히 수정 가능
- *  3. 테스트
- *  	- 단지 효율적일 테스트를 위해서라도
- *  
- *  
- * 테스트 코드에 의한 DI
- *  - UserDao 에성 DI container가 의존관계 주입에 사용하도록 setter method로 만듦
- *  	- UserDao가 사용할 DataSource 오브젝트를 테스트 코드에서도 변경 가능
- *  	- 테스트시 applicationContext.xml에 정의된 DataSource를 사용해도 되는가?
- *  		- 만약 테스트시 deleteAll()로 모든 정보가 삭제된다면 ...
- * - 테스트시 Dao가 사용할 DataSource 오브젝트를 바꿔주는 방법을 사용   
- */
 
-// 3번째 방법 적용으로 해제
-//@RunWith(SpringJUnit4ClassRunner.class)
-
-//@ContextConfiguration(locations="classpath:/applicationContext.xml")
-/*
- * 설정 파일을 이원화하여 test용 전용 설정파일을 사용
- * 이 경우 수동 DI나 @dirtiesContext필요 없음
- */
-//3번째 방법 적용으로 해제
-//@ContextConfiguration(locations="classpath:/test-applicationContext.xml")
-/*
- *  test method에서 ApplicationContext의 구성이나 상태를 변경하는 것을 TestContextFramework에 알려줌
- *  Spring TestContextFramework 사용시 다음 테스트에 ApplicationContext를 새로 생성해 공유
- *  class, method level에서 사용 가능
- */
-//@DirtiesContext
 public class UserDaoTest {
-
-//	@Autowired
-//	private ApplicationContext context;
-	
-//	@Autowired
 	private UserDao dao;
-	private JdbcContext jdbcContext;
 	
 	private User user1;
 	private User user2;
@@ -76,70 +27,19 @@ public class UserDaoTest {
 	public void setUp() {
 		user1 = new User("dec1", "동규1", "111");
 		user2 = new User("dec2", "동규2", "222");
-		user3 = new User("dec3", "동규3", "333");
+		user3 = new User("dec0", "동규3", "333");
 		/*
 		 * 3번째 방법
 		 */
 		dao = new UserDao();
-		jdbcContext = new JdbcContext();
 		
 		DataSource dataSource = new SingleConnectionDataSource(
 				"jdbc:mysql://localhost/springbooktest",
 				"spring",
 				"book",
 				true);
-		
-		jdbcContext.setDataSource(dataSource);
 		dao.setDataSource(dataSource);
-		/*
-		 * JdbcContext의 수동 DI를 통해 외부 노출이 사라짐
-		 
-		dao.setJdbcContext(jdbcContext);
-		*/
-
 		
-		// 테스트에서 UserDao가 사용할 DataSource 오브젝트를 직접 생성
-		/*
-		 * 1번째 방법
-		DataSource dataSource = new SingleConnectionDataSource(
-				"jdbc:mysql://localthost/springbooktest",
-				"spring",
-				"book",
-				true);
-		dao.setDataSource(dataSource);
-		*/
-		
-		/*
-		 * 장점
-		 *  - XML 설정파일을 수정하지 않고 테스트코드를 통해 오브젝트 관계를 재구성 가능
-		 *  	- 특별한 상황을 구성할 수 있음
-		 *  
-		 * 하지만 applicationContext.xml 파일의 설정정보를 강제로 변경했으므로 조심해야함
-		 * Spring TestContextFramework를 적용시 ApplicationContext는 test 중 한 개만 만들어지고 공유됨
-		 * 따라서 ApplicationContext의 구성/상태를 테스트내에서 변경하지 않는 것이 원칙
-		 * 
-		 * 1. @DirtiesContext 어노테이션 사용 방법
-		 * 		- Spring TestContextFramework에 ApplicationContext의 변경을 알리고 이 테스트 클래스에는
-		 *  	- ApplicationContext를 공유하지 않음 / Test method를 수행 후 새로운 ApplicationContext를 만들어서 다음 테스트가 사용하도록 함
-		 * 
-		 * 2. TEST를 위한 별도의 DI 설정 / 전용 설정파일 준비
-		 *  	- test시 사용될 DataSource를 미리 설정
-		 *  
-		 * 3. spring container 없는 DI테스트
-		 * 		- UserDaoTest는 UserDao가 동작함을 확인하려기보다 Dao 자체의 기능을 test하려는 목적
-		 * 		- 매번 UserDao를 생성해야하는 불편함 존재
-		 * 
-		 * 
-		 * 어떤 테스트를 해야하는가?
-		 *  - 모두 장단이 존재하지만
-		 *    항상 Spring Container 없이 사용할 수 있는 방법을 우선 고려
-		 *    가장 빠르고 테스트 자체가 간결
-		 *    
-		 *  - 복잡한 의존관계를 가진 오브젝트인 경우 Spring을 이용하면 간편
-		 *  - 테스트용 설정파일을 따로 관리하는 것이 좋음
-		 *  
-		 *  - 예외적 의존관계를 설정시 @DirtiesContext사용
-		 */
 	}
 	
 	@Test
@@ -187,9 +87,80 @@ public class UserDaoTest {
 		
 		dao.add(user3);
 		assertThat(dao.getCount(), is(3));
+	}
+	
+	
+	/*
+	 * 모든 사용자 정보를 다 가져오는 getAll()에 대한 테스트
+	 * 
+	 * 반환: List<User>
+	 * 순서: 기본키인 id 순 정렬
+	 * 
+	 * 이것을 코드화하면 --> 테스트 코드가 됨
+	 * 
+	 * 테스트 검증방법
+	 *  - User타입 오브젝트 user1, user2, user3 DB등록
+	 *  - List<User> 타입 반환
+	 *  - 크기 3
+	 *  - id 순서대로 담겨야함.
+	 *  - 동등성 비교
+	 *  
+	 * 최소 두 가지 이상 테스트 조건에 대해 기대한 결과를 확인해야함
+	 */
+	@Test
+	public void getAll() throws SQLException {
+		dao.deleteAll();
+		
+		/*
+		 * getAll의 네거티브 테스트
+		 * 결과가 하나도 없는 상황
+		 * 
+		 * 네거티브 테스트부터 만들기!@!
+		 * 
+		 * 
+		 * JdbcTemplate의 query() 메소드는 예외시 0을 반환하는게 정해져 있는데 이것을 왜 테스트해야하는가?
+		 *  - UserDao를 사용하는 입장에서 getAll()이 어떻게 구현되어있는지 모름, 알필요도 없음
+		 *  - getAll()이 어떻게 동작하는지만 관심.
+		 *  - UserDaoTest 클래스의 UserDao의 getAll()이라는 메소드의 기대 동작방식에 대한 검증이 먼저
+		 *  - 그러므로 예상값을 모두 검증하는게 옳다.
+		 */
+		List<User> users0 = dao.getAll();
+		assertThat(users0.size(), is(0));
+		
+		
+		// user1: id: dec1
+		dao.add(user1);
+		List<User> users1 = dao.getAll();
+		assertThat(users1.size(), is(1));
+		checkSameUser(user1, users1.get(0));
+		
+		// user1: id: dec1
+		dao.add(user2);
+		List<User> users2 = dao.getAll();
+		assertThat(users1.size(), is(1));
+		checkSameUser(user1, users2.get(0));
+		checkSameUser(user2, users2.get(1));
+		
+		// user1: id: dec1
+		dao.add(user3);
+		List<User> users3 = dao.getAll();
+		assertThat(users1.size(), is(1));
+		checkSameUser(user3, users3.get(0));
+		checkSameUser(user1, users3.get(1));
+		checkSameUser(user2, users3.get(2));
 		
 		
 	}
+	
+
+	private void checkSameUser(User user1, User user2) {
+		
+		assertThat(user1.getId(), is(user2.getId()));
+		assertThat(user1.getName(), is(user2.getName()));
+		assertThat(user1.getPassword(), is(user2.getPassword()));
+		
+	}
+	
 
 }
 
