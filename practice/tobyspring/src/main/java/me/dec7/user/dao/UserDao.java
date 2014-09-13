@@ -8,129 +8,43 @@ import javax.sql.DataSource;
 
 import me.dec7.user.domain.User;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
 /*
- * 4.1.2 예외 종류, 특징
+ * 4.2
  * 
- * throw를 통해 발생시킬 수 있는 예외
- *  1. java.lang.Error와 subClass
- *  	- 시스템에 뭔가 비정상적인 상황 발생시
- *  	- VM에서 발생
- *  		- 어플리케이션 코드에서 잡으려 하면 안됨
- *  		- OutOfMemoryError, ThreadDeath는 catch블록에서 잡아도 대응방법 없음
+ * JDBC 한계
+ *  - JDBC는 DB에 접근하는 방식을 추상화된 API로 제공하여 DB에 관계없이 일관된 방법으로 프로그래밍 가능
+ *  1. 비표준 SQL
+ *  	- Dao가 특정 DB에 종속적인 코드가 될 수도
+ *  2. SQLException
+ *  	- DB 예외의 원인은 다양하지만 모든 예외는 SQLException으로 처리됨
+ *  	- 에러 정보를 확인하기 위해 getErrorCode()를 확인해야함. 하지만 DB마다 그 코드가 다 다름
+ *  		ex) if (e.getErrorCode() == MysqlErrorNumbers.ER_DUP_ENTRY) { ...
  *  
- *  2. java.lang.Exception과 subClass
- *  	- 어플리케이션 코드 작업 중 예외상황 발생시
- *  	1) checked execption
- *  		- 일반적인 예외
- *  		- Exception의 subClass && RuntimeException 상속하지 않은 것
- *  		- catch or throws 하지 않을 경우 compile error
- *  	2) unckecked exception
- *  		- RuntimeException을 상속한 것
- *  		- 명시적으로 프로그램 오류시 발생되도록 의도된 것들
- *  			- NullPointerException
- *  			- IllegalArgumentException
- *  		- 피할 수 있지만 개발자가 부주의해서 발생할 수 있는 경우를 대비해 만든 것
- *  			- 따라서 예상치 못한 상황에서 발생하는 것이 아니므로 굳이 catch, throws를 사용하지 않아도 되는 것
- * 
- */
-
-/*
- * 4.1.3, 예외처리 방법
- * 
- *  1. 예외 복구
- *  	- 예외 상황 파악 --> 정상상태 복구
- *  	- 예외 처리시 기능적으로 어플리케이션은 정상적으로 설계된 흐름을 따라야 함
+ * 따라서 
+ *  호환성 없는 에러코드
+ *  표준을 따르지 않는 상태코드 가진
+ *  SQLException만으로 DB에 독립적인 유연한 코드를 작성하는 건 불가능에 가까움
  *  
- *  2. 예외 회피
- *  	- 예외 처리를 자신이 담당하지 않고 호출한 쪽으로 던지는 것
-	
-		// NO
-		public void add() throws SQLException {
-			// JDBC API
-		}
-		
-		// YES
-		public void add() throws SQLException {
-			try {
-				// JDBC API
-			} catch (SQLException e) {
-				// log 출력
-				throw e;
-			}
-		}
-		
-		template/callback pattern에서
-		callback object는 예외를 template쪽으로 던짐
-		 - 콜백이 예외를 처리하는 역할이 아니라고 판단
-		 - 이처럼 긴밀한 역할분담 관계가 아닐 경우 예외를 던지는 것은 무책임한 일
-		 
- *  3. 예외 전환
- *  	- 예외를 밖으로 던지되, 
- *  	  발생한 예외가 아닌, 적절한 예외로 전환해 던짐
  *  
- *  	1) 예외의 의미를 분명히 하기 위해
-			- 예외 전환 기능을 가진 add() 메소드
-  			
- *  	2) 예외를 처리하기 쉽고 단순하게 만들기 위해 포장
- *  		- 중첩 예외를 이용해 새로운 예외를 만들고 원인 예외를 내부에 담아 던지는 것은 동등
- *  		- 하지만 의미를 명확히 하려는 것이 아니라
- *  		  예외처리를 강제하는 체크 예외를 언체크 예외 (런타임)로 바꾸는 것
- *
- */
-
-/*
- * 4.1.4, 예외 처리 전략
- * 
- * 체크 예외시 복구 불가 --> 런타임 예외
- * 
- * 과거 자바로 애플릿 같은 독립 어플리케이션 환경에서
- *  - 통제 불가능한 시스템 예외라도 어플리케이션 작업이 종료되지 않도록 하고 상황을 복구해야했음.
- *  
- * 자바 엔터프라이즈 환경은 다름
- *  - 수많은 요청 중 예외가 발생한 요청만 중단하면 됨.
- *  - 오히려 서버를 중단하고 사용자와 커뮤니케이션하면서 예외상황을 복구할 수 없음
- *  - 차라리 어플리케이션 차원에서 예외상황을 미리 파악하고 예외가 발생하지 않도록 차단하는 것이 좋음
- *  - 그리고 프로그램, 외부완경 오류 발생시 빨리 작업 취소 후 담당자 통보가 좋음
- * 
- * 자바 환경이 서버로 이동하면서 체크 예외 활동도의 가치는 낮아짐
- *  - 자칫 throws Exception으로 의미없는 메소드만 낳을 뿐.
- * 
- * 차라리, 빨리 Runtime Exception으로 전환해서 던지는 것이 좋음
- * 최근엔 체크예외 대신, 언체크 예외로 정의하는 것일 일반화
- *  - 예전엔 복구할 가능성이 조금이라도 존재시 체크 예외로 만든다고 생각했음
- *  - 하지만 지금은 항상 복구할 수 있는 예외가 아니라면 일단 언체크로 만드는 경향이 있음 
- * 
- */
-
-/*
- * 낙관적인 예외 기법
- *  - 런타임 예외 / 필요할 때 사용
- * 
- * 비관적인 예외 기법
- *  - 일반적인 예외 / 일단 잡고 봄
- * 
- * 어플리케이션 예외
- *  - 어플리케이션 자체의 로직에 의해 의도적 발생
- *  
- *  - 반환 값으로 상태 확인시
- *  	- 리턴 값을 잘 관리하기 어렵고, 혼란 발생여지 있음
- *  	- 결과 값을 확인하는 분기문 필요 (많아지면 흐름 파악 어려움)
- *  
- *  - 정상적인 흐름을 그대로 따르되 예외상에서 의미를 가진 예외를 던짐
-		
-		try {
-			BigDecimal balance = account.withdraw(amount);
-			...
-			// 정상적인 처리결과 출력
-		} catch (InsufficientBalanceException e) {
-			// InsufficientBalanceException에 담긴 인출 가능 잔고 금액정보 가져옴
-			BigDecimal availFunds = e.getAvailFunds();
-			...
-			// 잔고 부족 안내 메시지 출력
-		}
+ *  DB에러 코드 맵핑을 통한 전환 
+ *   - Spring은 SQLException을 대체할 수 있는 Runtime Exception을 정의
+ *   	- DataAccessException
+ *   		- subclass
+ *   		- BadSqlGrammerException
+ *   			- sql 문법
+ *   		- DataAccessResourceFailureException
+ *   			- db connection
+ *   		- DataIntegrityViolationException
+ *   			- 제약조건 위반, 일관성 지키지 못했을 때
+ *   		- DuplicatedKeyException
+ *   			- 중복 키
+ *   		- etc...
+ *   - 문제
+ *   	- DB마다 error code가 다 다름
  */
 public class UserDao {
 	private JdbcTemplate jdbcTemplate;
@@ -252,8 +166,38 @@ public class UserDao {
 	 *  - Runtime예외 이므로 잡거나, 던질 의무는 사라짐
 	 * 
 	 */
+	
+	/*
+	 * JdbcTemplate은 
+	 * Runtime예외인 DataAccessException 계층구조의 예외로 포장
+	 * 중복인경우 단지 DuplicateKeyException으로 처리하면 됨
+	 * 
+	 */
+	/*
+	 * 예외 무시
 	public void add(User user) {
 		this.jdbcTemplate.update("insert into users(id, name, password) values(?,?,?)", user.getId(), user.getName(), user.getPassword());
+	}
+	*/
+	/*
+	 * JdbcTemplate이 제공하는 예외 전환 기능 사용
+	public void add(User user) throws DuplicateKeyException {
+		try {
+			this.jdbcTemplate.update("insert into users(id, name, password) values(?,?,?)", user.getId(), user.getName(), user.getPassword());
+		} catch (DuplicateKeyException e) {
+			// log 구성
+			throw e;
+		}
+	}
+	*/
+	public void add(User user) throws DuplicateUserIdException {
+		try {
+			this.jdbcTemplate.update("insert into users(id, name, password) values(?,?,?)", user.getId(), user.getName(), user.getPassword());
+		} catch (DuplicateKeyException e) {
+			// log 구성
+			// 예외 전환
+			throw new DuplicateUserIdException(e);
+		}
 	}
 	
 
@@ -278,6 +222,82 @@ public class UserDao {
 				"select * from users order by id",
 				this.userMapper);
 	}
+	
+	/*
+	 * 4.2.3, Dao interface & DataAccessException 계층구조
+	 * 
+	 * DataAccessException은
+	 * JDBC + 기타 자바 데이터 엑세트 기술에서 발생하는 예외에도 적용
+	 * JDO, JAP --> Java 표준 persistant 기술
+	 * 
+	 * 오라클 TopLink
+	 * 오픈소스 하이버네이트
+	 * 
+	 * iBatis
+	 */
+	
+	/*
+	 * Dao interface 구현 / 분리
+	 * 
+	 * Dao 분리 이유
+	 *  - 데이터 접근 로직을 담은 코드를 성격이 다른 코드에서 분리 위해
+	 *  - Dao 사용자는 내부 구현부를 신경쓰지 않아도 됨
+	 *  
+	 * 따라서 Dao는
+	 *  - interface를 사용해 구체적인 클래스 정보, 구현방법을 감추고
+	 *  - DI를 통해 제공되는 것이 바람직 
+
+
+	// db 접근시 api가 예외를 던지므로 사용불가
+	public interface UserDao {
+		public void add(User user);
+		
+		
+	// 데이터 액세스 기술의 api에 따라 예외도 다르므로 SQLException도 사용 불가
+	public void add(User user) throws SQLException;
+	
+	public void add(User user) throws PersistentException;	// jpa
+	public void add(User user) throws HibernateException;	// hibernate
+	public void add(User user) throws JdoException;			// jdo
+	
+	
+	// 가장 단순한 해결법?
+	public void add(User user) throws Exception				// 무책임
+	
+	
+	// 또는 jap, hibernate, jdo는 런타임 예외를 지원하므로, 포장만 잘 하면 아래처럼 쓸 수도 있음
+	// 하지만 모든 예외를 무시할 수는 없는 노릇. 
+	public void add(User user);
+	
+	 */
+	
+	/*
+	 * 위와 같은 문제로 데이터 엑세스시 발생하는 예외를 추상화함
+	 *  - 데이터 엑세스 예외 추상화, DataAccessException 계층구조
+	 *  
+	 *  DataAccessException은 자바 주요 데이터 액세스 기술에서 발생할 수 있는 대부분 예외를 추상화.
+	 *   - InvalidDataAccessResourceUsageException
+	 *   	- 데이터 액세스 기술을 부정확하게 사용시
+	 *   - ObjectOptimisticLockingFailureException
+	 *   	- jdo, jpa, 하이버네이트처럼 오브젝트/엔티티 단위로 업데이트시 낙관적인 락킹이 걸릴 수 있음
+	 *   		- 두 명이상 사용자가 동시에 조회, 순차적 업데이트시 뒤늦게 업데이트 한 것이 먼저 업데이트 한 것을 덮어쓰지 않도록 막아주는 기능
+	 *   		- 적절한 메시지 지공 필요
+	 *   - IncorrectResultSizeDataAccessException
+	 *   	- sql 잘못 작성시 / jdbc는 예외 발생 안함 / jdbcTemplate은 발생시켜줌
+	 *   	- subtype/ EmptyResultDataAccessException
+	 *   
+	 *  
+	 * 따라서,
+	 * Spring 데이터 액세스 지원기술을 사용해 Dao 구현시
+	 *  - 기술에 독립적인 일관성 있는 예외를 던질 수 있음
+	 */
+	
+	/*
+	 * 이상적인 Dao 구현
+	 *  - interface 사용
+	 *  - runtime exception 전환
+	 *  - DataAccessException 예외 추상화
+	 */
 	
 }
 

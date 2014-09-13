@@ -29,6 +29,30 @@
 		-->
 	</bean>
 	
+	<!-- p303, oracle 에러코드 맵핑 파일 
+	맵핑되는 예외는 모두 DataAccessException의 subtype
+	
+	<bean id="Oracle" class="org.springframework.jdbc.support.SQLErrorCodes">
+		<property name="badSqlGrammerCodes">
+			<value>900,903,904,917,936,942,10076</value>
+		</property>
+		<property name="invalidResultSetAccessCodes">
+			<value>17003</value>
+		</property>
+		<property name="duplicateKeyCodes">
+			<value>1</value>
+		</property>
+		<property name="dataIntegrityViolationCodes">
+			<value>1400,1722,2291,2292</value>
+		</property>
+		<property name="dataAccessResourceFailureCodes">
+			<value>17002,17447</value>
+		</property>
+	</bean>
+	-->
+	
+	
+	
 
 
 </beans>
