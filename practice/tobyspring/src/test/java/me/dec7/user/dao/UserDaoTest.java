@@ -1,7 +1,7 @@
 package me.dec7.user.dao;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.CoreMatchers.*;
+import static org.junit.Assert.*;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -12,12 +12,29 @@ import me.dec7.user.domain.User;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.datasource.SingleConnectionDataSource;
+import org.springframework.jdbc.support.SQLErrorCodeSQLExceptionTranslator;
+import org.springframework.jdbc.support.SQLExceptionTranslator;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("classpath:/test-applicationContext.xml")
 public class UserDaoTest {
+//	private UserDaoJdbc dao;
+	/*
+	 * @Autowired는 spring context내에서 정의된 bean중 주입가능한 타입의 bean을 찾아줌
+	 * UserDaoJdbc라고 선언할 수 있지만
+	 * 중요한 것은 테스트에 대한 관심으로 dao가 작동만하면 된다
+	 */
+	@Autowired
 	private UserDao dao;
+	
+	@Autowired
+	private DataSource dataSource;
 	
 	private User user1;
 	private User user2;
@@ -27,20 +44,49 @@ public class UserDaoTest {
 	public void setUp() {
 		user1 = new User("dec1", "동규1", "111");
 		user2 = new User("dec2", "동규2", "222");
-		user3 = new User("dec0", "동규3", "333");
-		/*
-		 * 3번째 방법
-		 */
-		dao = new UserDao();
-		
-		DataSource dataSource = new SingleConnectionDataSource(
-				"jdbc:mysql://localhost/springbooktest",
-				"spring",
-				"book",
-				true);
-		dao.setDataSource(dataSource);
-		
+		user3 = new User("dec0", "동규3", "333");		
 	}
+	
+	/*
+	 * DataAccessException 주의사항
+	 *  - DuplicateKeyException은 JDBC이용시만 발생
+	 *  - hibernate 중복시 발생시
+	 *  	- ConstraintviolationException 
+	 *  	- 서로 DataIntegrityViolationException의 한 종류긴 하나
+	 *  	  다른 상황에서도 동일한 예외가 발생할 수 있으므로 이용가치는 떨어짐
+	 */
+	
+//	@Test(expected=DuplicateUserIdException.class)
+	@Test(expected=DuplicateKeyException.class)
+	public void duplicateKey() {
+		dao.deleteAll();
+		
+		dao.add(user1);
+		dao.add(user1);
+	}
+	/* 
+	 * SQLException을 DataAccessException으로 여러가지로 전환 가능
+	 * 	- 보편적 방법은 DB코드를 이용하는 것
+	 * 		- SQLExceptionTranslator interface구현한 SQLErrorCodeSQLExceptionTranslator 사용하면 됨
+	 * 			- DB종류를 알기 위해 DataSource을 필요로함
+	 */
+	// dataSource를 사용해 SQLException에서 DuplicateKeyException으로 전환하는 기능을 확인해보는 학습테스트
+	@Test
+	public void sqlExceptionTranslate() {
+		dao.deleteAll();
+		
+		try {
+			dao.add(user1);
+			dao.add(user1);
+		} catch (DuplicateKeyException e) {
+			SQLException sqle = (SQLException)e.getRootCause();
+			SQLExceptionTranslator set = new SQLErrorCodeSQLExceptionTranslator(this.dataSource);
+			
+//			assertThat(set.translate(null, null, sqle), is(DuplicateKeyException.class));
+		}
+	}
+	
+	
 	
 	@Test
 	public void addAndGet() throws SQLException, ClassNotFoundException {

@@ -65,7 +65,7 @@ public class DaoFactory {
 //		return new UserDao(connectionMaker());
 		
 		// setter method DI 방식으로 수정되어 설정도 변경
-		UserDao dao = new UserDao();
+		UserDaoJdbc dao = new UserDaoJdbc();
 		dao.setDataSource(dataSource());
 		
 		return dao;

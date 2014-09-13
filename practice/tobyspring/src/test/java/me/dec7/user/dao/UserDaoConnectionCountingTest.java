@@ -11,7 +11,7 @@ public class UserDaoConnectionCountingTest {
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
-		UserDao dao = context.getBean(UserDao.class);
+		UserDao dao = context.getBean(UserDaoJdbc.class);
 		
 		// DB 사용코드
 		// ---------------
