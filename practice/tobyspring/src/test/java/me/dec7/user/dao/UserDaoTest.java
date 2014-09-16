@@ -8,6 +8,7 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
+import me.dec7.user.domain.Level;
 import me.dec7.user.domain.User;
 
 import org.junit.Before;
@@ -42,21 +43,18 @@ public class UserDaoTest {
 	
 	@Before
 	public void setUp() {
+		/*
+		 * text fixture로 만든 user1~3을 수정
 		user1 = new User("dec1", "동규1", "111");
 		user2 = new User("dec2", "동규2", "222");
-		user3 = new User("dec0", "동규3", "333");		
+		user3 = new User("dec0", "동규3", "333");
+		*/		
+		
+		user1 = new User("dec1", "동규1", "111", Level.BASIC, 1, 0);
+		user2 = new User("dec2", "동규2", "222", Level.SILVER, 55, 10);
+		user3 = new User("dec0", "동규3", "333", Level.GOLD, 100, 40);
 	}
 	
-	/*
-	 * DataAccessException 주의사항
-	 *  - DuplicateKeyException은 JDBC이용시만 발생
-	 *  - hibernate 중복시 발생시
-	 *  	- ConstraintviolationException 
-	 *  	- 서로 DataIntegrityViolationException의 한 종류긴 하나
-	 *  	  다른 상황에서도 동일한 예외가 발생할 수 있으므로 이용가치는 떨어짐
-	 */
-	
-//	@Test(expected=DuplicateUserIdException.class)
 	@Test(expected=DuplicateKeyException.class)
 	public void duplicateKey() {
 		dao.deleteAll();
@@ -87,7 +85,10 @@ public class UserDaoTest {
 	}
 	
 	
-	
+	/*
+	 * BadSqlGrammerException / DataAccessException의 하위 class
+	 * 	- sql문법이 틀린경우 발생하는 예외
+	 */
 	@Test
 	public void addAndGet() throws SQLException, ClassNotFoundException {
 		// db 초기화
@@ -101,16 +102,17 @@ public class UserDaoTest {
 		
 		// get()
 		User userget1 = dao.get(user1.getId());
-		assertThat(userget1.getName(), is(user1.getName()));
-		assertThat(userget1.getPassword(), is(user1.getPassword()));
+		// assertThat(userget1.getName(), is(user1.getName()));
+		// assertThat(userget1.getPassword(), is(user1.getPassword()));
+		checkSameUser(userget1, user1);
 		
 		User userget2 = dao.get(user2.getId());
-		assertThat(userget2.getName(), is(user2.getName()));
-		assertThat(userget2.getPassword(), is(user2.getPassword()));
+		// assertThat(userget2.getName(), is(user2.getName()));
+		// assertThat(userget2.getPassword(), is(user2.getPassword()));
+		checkSameUser(userget2, user2);
 		
 	}
 	
-
 	@Test(expected=EmptyResultDataAccessException.class)
 	public void getUserFailure() throws SQLException, ClassNotFoundException {
 		dao.deleteAll();
@@ -135,41 +137,46 @@ public class UserDaoTest {
 		assertThat(dao.getCount(), is(3));
 	}
 	
-	
 	/*
-	 * 모든 사용자 정보를 다 가져오는 getAll()에 대한 테스트
+	 * 수정 테스트 보완
 	 * 
-	 * 반환: List<User>
-	 * 순서: 기본키인 id 순 정렬
+	 * JDBC개발에서 리소스반환 같은 기본작업을 제외시
+	 * 가장 실수가 많이 일어나는 부분은 SQL문장임
 	 * 
-	 * 이것을 코드화하면 --> 테스트 코드가 됨
+	 * 하지만 아래의 테스트에서는 수정된 결과값을 확인할 수 없음
 	 * 
-	 * 테스트 검증방법
-	 *  - User타입 오브젝트 user1, user2, user3 DB등록
-	 *  - List<User> 타입 반환
-	 *  - 크기 3
-	 *  - id 순서대로 담겨야함.
-	 *  - 동등성 비교
-	 *  
-	 * 최소 두 가지 이상 테스트 조건에 대해 기대한 결과를 확인해야함
+	 * 해결방법
+	 *  1. JdbcTemplate의 update()가 돌려주는 리턴값을 확인하는 방법
+	 *  	- jdbcTemplate의 update, delete를 실행시 영향받는 row의 개수를 반환해줌
+	 *  2. 테스트를 보강 / 원하는 사용자 외의 정보는 변경되지 않았음을 확인
 	 */
+	@Test
+	public void update() {
+		dao.deleteAll();
+		
+		dao.add(user1);
+		dao.add(user2);
+		
+		user1.setName("newDec7");
+		user1.setPassword("password");
+		user1.setLevel(Level.GOLD);
+		user1.setLogin(1000);
+		user1.setRecommend(999);
+		
+		dao.update(user1);
+		
+		User user1update = dao.get(user1.getId());
+		checkSameUser(user1, user1update);
+		
+		User user2same = dao.get(user2.getId());
+		checkSameUser(user2, user2same);
+		
+	}
+	
 	@Test
 	public void getAll() throws SQLException {
 		dao.deleteAll();
-		
-		/*
-		 * getAll의 네거티브 테스트
-		 * 결과가 하나도 없는 상황
-		 * 
-		 * 네거티브 테스트부터 만들기!@!
-		 * 
-		 * 
-		 * JdbcTemplate의 query() 메소드는 예외시 0을 반환하는게 정해져 있는데 이것을 왜 테스트해야하는가?
-		 *  - UserDao를 사용하는 입장에서 getAll()이 어떻게 구현되어있는지 모름, 알필요도 없음
-		 *  - getAll()이 어떻게 동작하는지만 관심.
-		 *  - UserDaoTest 클래스의 UserDao의 getAll()이라는 메소드의 기대 동작방식에 대한 검증이 먼저
-		 *  - 그러므로 예상값을 모두 검증하는게 옳다.
-		 */
+
 		List<User> users0 = dao.getAll();
 		assertThat(users0.size(), is(0));
 		
@@ -200,10 +207,12 @@ public class UserDaoTest {
 	
 
 	private void checkSameUser(User user1, User user2) {
-		
 		assertThat(user1.getId(), is(user2.getId()));
 		assertThat(user1.getName(), is(user2.getName()));
 		assertThat(user1.getPassword(), is(user2.getPassword()));
+		assertThat(user1.getLevel(), is(user2.getLevel()));
+		assertThat(user1.getLogin(), is(user2.getLogin()));
+		assertThat(user1.getRecommend(), is(user2.getRecommend()));
 		
 	}
 	

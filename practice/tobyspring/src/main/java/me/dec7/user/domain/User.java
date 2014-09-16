@@ -1,43 +1,102 @@
 package me.dec7.user.domain;
 
 
-/*
- * 사용자 정보 저장시 Java Bean 규약을 따르는 Object를 만들면 편함
- * 
- * JavaBean
- *  - 원래 비주얼 툴에서 조작 가능한 컴포넌트를 말함
- *  - Java의 주력 개발플랫폼이 웹 기반 엔터프라이즈 방식으로 바뀜으로써 자바빈은 인기를 잃음
- *  - Java Bean의 몇 가지 코딩 관례는 JSP Bean, EJB와 같은 표준기술, 오픈소스를 통해 이어짐
- *  - 이젠, 비주얼 컴포넌트라기 보다 두 가지 관례를 따라 만들어진 Object에 가까움
- *  	1. default constructor
- *  		- 파라미터가 없는 디폴트 생성자를 가진다.
- *  		- 툴, 프레임워크에서 reflection을 이용해 Ojbect를 생성하기 때문
- *  	2. property
- *  		- Java Bean이 노출하는 이름을 가진 속성
- *  		- property는 set으로 시작하는 수정자 메소드, get으로 시작하는 접근자 메소드를 이용해 수정/조회 가능
- *  
- */
-
 public class User {
-
+	
+//	private static final int BASIC = 1;
+//	private static final int SILVER = 2;
+//	private static final int GOLD = 3;
+	
+	
+	/* 
+	 * Level 타입의 변수담을 field 추가
+	int level;
+	
+	 * 사용자 레벨 관리로직에 필요
+	 * 	- 로그인 횟수, 추천수
+	 */
+	Level level;
+	int login;
+	int recommend;
+	
 	private String id;
 	private String name;
 	private String password;
+	
 
+	public User(String id, String name, String password, Level level, int login, int recommend) {
+		this.id = id;
+		this.name = name;
+		this.password = password;
+		this.level = level;
+		this.login = login;
+		this.recommend = recommend;
+	}
+	
 	public User(String id, String name, String password) {
 		this.id = id;
 		this.name = name;
 		this.password = password;
 	}
 	
-
 	public User() {
 	}
+	
 
+	/*
+	 * p321, 사용자 레벨 상수 값을 이용한 코드
+	
+	if (user1.getLevel() == User.BASIC) {
+		user1.setLevel(User.SILVER);
+	}
+	 
+	 * 문제
+	 * 	- level 타입이 int이므로 다른 종류의 정보를 넣는 실수를 해도 컴파일러가 체크 못함
+	user1.setLevel(1000);
+	
+	 * 해결책
+	 * 	- enum을 이용하는 것이 편리 & 안전
+	 *  - me.dec7.user.domain.Level 참고
+	 */
+	/*
+	public int getLevel() {
+		return level;
+	}
+
+	public void setLevel(int level) {
+		this.level = level;
+	}
+	*/
+	
+
+	public Level getLevel() {
+		return level;
+	}
+	
+	public void setLevel(Level level) {
+		this.level = level;
+	}	
+
+	public int getLogin() {
+		return login;
+	}
+
+	public void setLogin(int login) {
+		this.login = login;
+	}
+
+	public int getRecommend() {
+		return recommend;
+	}
+
+	public void setRecommend(int recommend) {
+		this.recommend = recommend;
+	}
 
 	public String getId() {
 		return id;
 	}
+
 
 	public void setId(String id) {
 		this.id = id;
@@ -57,6 +116,20 @@ public class User {
 
 	public void setPassword(String password) {
 		this.password = password;
+	}
+	
+	public void upgradeLevel() {
+		// 다음 레벨이 무엇인지 확인
+		Level nextLevel = this.level.nextLevel();
+		
+		// 물론 canUpgradeUser가 처리할 수 있지만 조금 더 명확히 예외상황을 알려줘야함
+		if (nextLevel == null) {
+			throw new IllegalStateException(this.level + "은 업그레이드가 불가능합니다.");
+			
+		} else {
+			this.level = nextLevel;
+			
+		}
 	}
 
 }

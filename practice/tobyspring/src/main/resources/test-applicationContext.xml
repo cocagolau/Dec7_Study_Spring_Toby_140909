@@ -12,15 +12,16 @@
 	</bean>
 	
 	<!-- 새로운 jdbcContext를 bean으로 등록 -->
-	<bean id="jdbcContext" class="me.dec7.user.dao.JdbcContext">
-		<property name="dataSource" ref="dataSource" />
+	
+	<bean id="userLevelUpgradePolicy" class="me.dec7.user.service.StandardUpgradePolicy" />
+	
+	<bean id="userService" class="me.dec7.user.service.UserService">
+		<property name="userDao" ref="userDao" />
+		<property name="userLevelUpgradePolicy" ref="userLevelUpgradePolicy" />
 	</bean>
 	
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
-		
-		<!-- bean 의존관계 변경 -->
-		<!-- <property name="jdbcContext" ref="jdbcContext" /> -->
 	</bean>
 	
 
