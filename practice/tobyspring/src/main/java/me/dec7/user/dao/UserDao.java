@@ -22,5 +22,13 @@ public interface UserDao {
 	List<User> getAll();
 
 	void update(User user);
+	
+	/*
+	void add(Connection c, User user);
+
+	User get(Connection c, String id);
+
+	void update(Connection c, User user);
+	*/
 
 }

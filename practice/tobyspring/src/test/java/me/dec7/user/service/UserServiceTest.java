@@ -3,6 +3,7 @@ package me.dec7.user.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.transaction.PlatformTransactionManager;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration("classpath:/test-applicationContext.xml")
@@ -24,6 +26,12 @@ public class UserServiceTest {
 
 	@Autowired
 	UserService userService;
+	
+//	@Autowired
+//	DataSource dataSource;
+	
+	@Autowired
+	PlatformTransactionManager transactionManager;
 	
 	@Autowired
 	UserDao userDao;
@@ -39,10 +47,10 @@ public class UserServiceTest {
 		 * 각각 데이터의 경계값을 선택하여 테스트
 		 */
 		users = Arrays.asList(
-				new User("dec1", "동규1", "pw1", Level.BASIC, StandardUpgradePolicy.MIN_LOGCOUNT_FOR_SILVER-1, 0),
-				new User("dec2", "동규2", "pw2", Level.BASIC, StandardUpgradePolicy.MIN_LOGCOUNT_FOR_SILVER, 0),
-				new User("dec3", "동규3", "pw3", Level.SILVER, 60, StandardUpgradePolicy.MIN_RECOMMEND_FOR_GOLD-1),
-				new User("dec4", "동규4", "pw4", Level.SILVER, 60, StandardUpgradePolicy.MIN_RECOMMEND_FOR_GOLD),
+				new User("dec1", "동규1", "pw1", Level.BASIC, UserService.MIN_LOGCOUNT_FOR_SILVER-1, 0),
+				new User("dec2", "동규2", "pw2", Level.BASIC, UserService.MIN_LOGCOUNT_FOR_SILVER, 0),
+				new User("dec3", "동규3", "pw3", Level.SILVER, 60, UserService.MIN_RECOMMEND_FOR_GOLD-1),
+				new User("dec4", "동규4", "pw4", Level.SILVER, 60, UserService.MIN_RECOMMEND_FOR_GOLD),
 				new User("dec5", "동규5", "pw5", Level.GOLD, 100, 100)
 			);
 	}
@@ -56,8 +64,9 @@ public class UserServiceTest {
 		assertThat(this.userService, is(notNullValue()));
 	}
 	
+	
 	@Test
-	public void upgradeLevels() {
+	public void upgradeLevels() throws Exception {
 		userDao.deleteAll();
 		
 		for (User user : users) {
@@ -78,11 +87,11 @@ public class UserServiceTest {
 		checkLevel(users.get(4), Level.GOLD);
 		 */
 		
-		checkLevel(users.get(0), false);
-		checkLevel(users.get(1), true);
-		checkLevel(users.get(2), false);
-		checkLevel(users.get(3), true);
-		checkLevel(users.get(4), false);
+		checkLevelUpgraded(users.get(0), false);
+		checkLevelUpgraded(users.get(1), true);
+		checkLevelUpgraded(users.get(2), false);
+		checkLevelUpgraded(users.get(3), true);
+		checkLevelUpgraded(users.get(4), false);
 		
 		
 	}
@@ -116,7 +125,7 @@ public class UserServiceTest {
 		assertThat(userUpdate.getLevel(), is(expectedLevel));
 	}
 	*/
-	private void checkLevel(User user, boolean upgraded) {
+	private void checkLevelUpgraded(User user, boolean upgraded) {
 		User userUpdate = userDao.get(user.getId());
 		
 		if (upgraded) {
@@ -126,6 +135,46 @@ public class UserServiceTest {
 			assertThat(userUpdate.getLevel(), is(user.getLevel()));
 			
 		}
+	}
+	
+	// @Test(expected=TestUserServiceException.class)
+	@Test(expected=AssertionError.class)
+	public void upgradeAllOrNothing() throws Exception {
+		UserService testUserService = new TestUserService(users.get(3).getId());
+		// 수동 DI
+		testUserService.setUserDao(this.userDao);
+//		testUserService.setDataSource(this.dataSource);
+		testUserService.setTransactionManager(transactionManager);
+		
+		userDao.deleteAll();
+		
+		for (User user : users) {
+			userDao.add(user);
+		}
+		
+		try {
+			testUserService.upgradeLevels();
+			// TestUserService는 업그레이드시 예외 발생시 정상
+			fail("TestUserServiceException expected");
+		} catch (TestUserServiceException e) {
+			
+		}
+		
+		// 예외 발생 전 레벨 변경이 있었던 사용자의 레벨이 처음 상태로 바뀌었는지 확인
+		checkLevelUpgraded(users.get(1), false);
+		
+		/*
+		 * 결과는 java.lang.AssertionError Expected: is<BASIC> got:<SILVER>
+		 *  - 두번째 사용자 레벨이 BASIC에서 SILVER로 바뀌 것이,
+		 *    네번째 사용자 처리중 예외 발생했지만 그대로 유지됨
+		 *    
+		 * 원인
+		 *  - 트랜젝션 문제
+		 *  - 모든 사용자의 레벨을 업그레이드 하는 작업인 upgradeLevels() 메소드가
+		 *    하나의 트랜잭션 안에서 동작하지 않았기 때문
+		 *  - 트랜잭션은 더 이상 나눌 수 없는 단위 작업 / 원자성
+		 *  - 전체 성공 혹은 전체 실패
+		 */
 	}
 
 
