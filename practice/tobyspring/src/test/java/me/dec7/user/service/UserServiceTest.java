@@ -25,12 +25,22 @@ import org.springframework.transaction.PlatformTransactionManager;
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration("classpath:/test-applicationContext.xml")
 public class UserServiceTest {
-
+	
+	/*
+	 * Autowired는 interface 타입이라도 DI가 가능
+	 * 하지만 applicationContext에는 2개의 UserService타입이 정의되어 있음
+	 *  - 이 경우 필드 이름으로 찾음
+	 */
 	@Autowired
 	UserService userService;
 	
-//	@Autowired
-//	DataSource dataSource;
+	/*
+	 * UserServiceImpl
+	 *  - MailSender의 Mock 오브젝트를 이용한 테스트에서 MailSender를 직접 DI해줘야했음.
+	 *    따라서 MailSender를 DI해줄 대상을 명확히 해야함
+	 */
+	@Autowired
+	UserServiceImpl userServiceImpl;
 	
 	@Autowired
 	MailSender mailSender;
@@ -52,10 +62,10 @@ public class UserServiceTest {
 		 * 각각 데이터의 경계값을 선택하여 테스트
 		 */
 		users = Arrays.asList(
-				new User("dec1", "동규1", "pw1", "dec1@gmail.com", Level.BASIC, UserService.MIN_LOGCOUNT_FOR_SILVER-1, 0),
-				new User("dec2", "동규2", "pw2", "dec2@gmail.com", Level.BASIC, UserService.MIN_LOGCOUNT_FOR_SILVER, 0),
-				new User("dec3", "동규3", "pw3", "dec3@gmail.com",Level.SILVER, 60, UserService.MIN_RECOMMEND_FOR_GOLD-1),
-				new User("dec4", "동규4", "pw4", "dec4@gmail.com",Level.SILVER, 60, UserService.MIN_RECOMMEND_FOR_GOLD),
+				new User("dec1", "동규1", "pw1", "dec1@gmail.com", Level.BASIC, UserServiceImpl.MIN_LOGCOUNT_FOR_SILVER-1, 0),
+				new User("dec2", "동규2", "pw2", "dec2@gmail.com", Level.BASIC, UserServiceImpl.MIN_LOGCOUNT_FOR_SILVER, 0),
+				new User("dec3", "동규3", "pw3", "dec3@gmail.com",Level.SILVER, 60, UserServiceImpl.MIN_RECOMMEND_FOR_GOLD-1),
+				new User("dec4", "동규4", "pw4", "dec4@gmail.com",Level.SILVER, 60, UserServiceImpl.MIN_RECOMMEND_FOR_GOLD),
 				new User("dec5", "동규5", "pw5", "dec5@gmail.com",Level.GOLD, 100, 100)
 			);
 	}
@@ -82,7 +92,8 @@ public class UserServiceTest {
 		
 		// 메일 발송 결과를 테스트할 수 있도록 목 오브젝트를 만들어 userService의 의존 오브젝트로 주입
 		MockMailSender mockMailSender = new MockMailSender();
-		userService.setMailSender(mockMailSender);
+		// userService.setMailSender(mockMailSender);
+		userServiceImpl.setMailSender(mockMailSender);
 		
 		userService.upgradeLevels();
 		
@@ -152,15 +163,26 @@ public class UserServiceTest {
 		}
 	}
 	
-	// @Test(expected=TestUserServiceException.class)
-	@Test(expected=AssertionError.class)
+	
+	/*
+	 * 트랜잭션 경계설정 코드 분리와 DI를 통한 연결 장점
+	 *  1. 비지니스 로직인 UserServiceImpl 코드는 기술적인 내용을 전혀 신경쓰지 않아도 됨
+	 *  2. 비지니스 로직에 대한 테스트를 쉽게 만들 수 있음
+	 */
+	// @Test(expected=AssertionError.class)
+	@Test(expected=TestUserServiceException.class)
 	public void upgradeAllOrNothing() throws Exception {
-		UserService testUserService = new TestUserService(users.get(3).getId());
-		// 수동 DI
-		testUserService.setUserDao(this.userDao);
-//		testUserService.setDataSource(this.dataSource);
-		testUserService.setTransactionManager(transactionManager);
-		testUserService.setMailSender(mailSender);
+		TestUserService testUserService = new TestUserService(users.get(3).getId());
+		
+		// 수동 DI	
+		 testUserService.setUserDao(this.userDao);
+		 testUserService.setMailSender(mailSender);
+		 // testUserService.setTransactionManager(transactionManager);
+		 
+		 // 트랜잭션 기능을 분리한 UserServiceTx는 예외 발생용으로 수정할 필요가 없음
+		 UserServiceTx txUserService = new UserServiceTx();
+		 txUserService.setTransactionManager(transactionManager);
+		 txUserService.setUserService(testUserService);
 		
 		userDao.deleteAll();
 		
@@ -168,57 +190,18 @@ public class UserServiceTest {
 			userDao.add(user);
 		}
 		
+		// 트랜잭션 기능을 분리한 오브젝트를 통해 예외발생용 TestUserService가 호출되게 해야함
+		txUserService.upgradeLevels();
+		/*
 		try {
-			testUserService.upgradeLevels();
 			// TestUserService는 업그레이드시 예외 발생시 정상
 			fail("TestUserServiceException expected");
 		} catch (TestUserServiceException e) {
 			
-		}
+		}*/
 		
 		// 예외 발생 전 레벨 변경이 있었던 사용자의 레벨이 처음 상태로 바뀌었는지 확인
 		checkLevelUpgraded(users.get(1), false);
-		
-		/*
-		 * 결과는 java.lang.AssertionError Expected: is<BASIC> got:<SILVER>
-		 *  - 두번째 사용자 레벨이 BASIC에서 SILVER로 바뀌 것이,
-		 *    네번째 사용자 처리중 예외 발생했지만 그대로 유지됨
-		 *    
-		 * 원인
-		 *  - 트랜젝션 문제
-		 *  - 모든 사용자의 레벨을 업그레이드 하는 작업인 upgradeLevels() 메소드가
-		 *    하나의 트랜잭션 안에서 동작하지 않았기 때문
-		 *  - 트랜잭션은 더 이상 나눌 수 없는 단위 작업 / 원자성
-		 *  - 전체 성공 혹은 전체 실패
-		 */
 	}
-	
-	/*
-	 * sendUpgradeEmail 테스트
-	 * 
-	 * javax.mail.MessagingException: Could not connect to SMTP host
-	 *  - 메일서버가 준비되지 않았으므로
-	 * 
-	 * 
-	 * 방법?
-	 *  1. 메일서버 준비?
-	 *  	- 운영중인 메일서버 부담 / 실제 메일이 발송됨
-	 *  
-	 *  2. 테스트용 메일서버 준비?
-	 *  	- 메일발송기능은 사용자레벨 업그레이드의 보조기능 불과함
-	 *  	- DB에 잘 반영되었는가하는 문제보다 덜 중요
-	 *  	- 메일이 잘 도착했는지만 테스트하기는 엄밀하게 불가능
-	 * 
-	 *  3. 테스트용 JavaMail 사용
-	 *  	- 구조
-	 *  		- UserService --> JavaMail --> 테스트용 메일서버
-	 *  		- UserService --> 테스트용 JavaMail
-	 *  	- JavaMail은 자바의 표준기술로 안정적 
-	 *  		- JavaMail API를 통해 요청이 가능할 경우 테스트할 때마다 JavaMail을 수행하여 외부 서버를 사용할 필요 없음 
-	 * 
-	 * 
-	 * 5.4.3, 테스트위한 서비스 추상
-	 */
-
 
 }

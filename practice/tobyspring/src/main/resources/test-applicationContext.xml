@@ -19,9 +19,13 @@
 	
 	<bean id="mailSender" class="me.dec7.user.service.DummyMailSender" />
 	
-	<bean id="userService" class="me.dec7.user.service.UserService">
-		<property name="userDao" ref="userDao" />
+	<bean id="userService" class="me.dec7.user.service.UserServiceTx">
 		<property name="transactionManager" ref="transactionManager" />
+		<property name="userService" ref="userServiceImpl" />
+	</bean>
+	
+	<bean id="userServiceImpl" class="me.dec7.user.service.UserServiceImpl">
+		<property name="userDao" ref="userDao" />
 		<property name="mailSender" ref="mailSender" />
 	</bean>
 	

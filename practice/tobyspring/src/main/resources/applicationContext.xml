@@ -16,30 +16,18 @@
 		<property name="dataSource" ref="dataSource" />
 	</bean>
 	
-	<!-- 
-		JavaMailSenderImpl
-		 - spring이 직접 제공하는 MailSender를 구현한 추상화 클래스
-		 - JavaMail이 아닌경우 다른 메시징 서버의 API를 이용하는 MailSender 구현 클래스를 만들어 DI
-		 
-		 따라서, 하위 계층은 메일발송에 대한 요청만 충실히 수행
-		 메일 발송 방식이 바뀌어도 로지니스 로직과 바뀌지 않음
-		 
-		 심화
-		  - 만약 메일 발송기능에 트랜잭션을 사용하려면...
-		  1) 메일을 업그레이드할 사용자 발견시 발송하지 않고 발송 대상을 별도의 목록에 저장해두기..
-		  	- 업그레이드 작업 모두 성공시 발송
-		  	- 단점: 메일 저장 리스트 등을 파라미터로 계속 가지고 다녀야 하는것.
-		  2) MailSender를 확장해 메일 전송에 트랜잭션 개념을 적용
-		  	- MailSender 구현한 트랜잭션 개념이 들어간 클래스 만듦
-		  	- MailSender.send() 호출해도 발송하지않고 대기했다가 업그레이드 완료시 발송
-	 -->
 	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
 		<property name="host" value="mail.server.com" />
 	</bean>
 	
-	<bean id="userService" class="me.dec7.user.service.UserService">
-		<property name="userDao" ref="userDao" />
+	<bean id="userService" class="me.dec7.user.service.UserServiceTx">
+		<!-- <property name="userDao" ref="userDao" /> -->
 		<property name="transactionManager" ref="transactionManager" />
+		<property name="userService" ref="userServiceImpl" />
+	</bean>
+	
+	<bean id="userServiceImpl" class="me.dec7.user.service.UserServiceImpl">
+		<property name="userDao" ref="userDao" />
 		<property name="mailSender" ref="mailSender" />
 	</bean>
 	
