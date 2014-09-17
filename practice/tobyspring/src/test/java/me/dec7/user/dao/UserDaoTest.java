@@ -50,9 +50,9 @@ public class UserDaoTest {
 		user3 = new User("dec0", "동규3", "333");
 		*/		
 		
-		user1 = new User("dec1", "동규1", "111", Level.BASIC, 1, 0);
-		user2 = new User("dec2", "동규2", "222", Level.SILVER, 55, 10);
-		user3 = new User("dec0", "동규3", "333", Level.GOLD, 100, 40);
+		user1 = new User("dec1", "동규1", "111", "dec1@gmail.com",Level.BASIC, 1, 0);
+		user2 = new User("dec2", "동규2", "222", "dec2@gmail.com",Level.SILVER, 55, 10);
+		user3 = new User("dec0", "동규3", "333", "dec0@gmail.com",Level.GOLD, 100, 40);
 	}
 	
 	@Test(expected=DuplicateKeyException.class)
@@ -210,6 +210,7 @@ public class UserDaoTest {
 		assertThat(user1.getId(), is(user2.getId()));
 		assertThat(user1.getName(), is(user2.getName()));
 		assertThat(user1.getPassword(), is(user2.getPassword()));
+		assertThat(user1.getEmail(), is(user2.getEmail()));
 		assertThat(user1.getLevel(), is(user2.getLevel()));
 		assertThat(user1.getLogin(), is(user2.getLogin()));
 		assertThat(user1.getRecommend(), is(user2.getRecommend()));

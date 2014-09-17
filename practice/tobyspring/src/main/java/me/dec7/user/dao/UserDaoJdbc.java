@@ -23,6 +23,7 @@ public class UserDaoJdbc implements UserDao {
 			user.setId(rs.getString("id"));
 			user.setName(rs.getString("name"));
 			user.setPassword(rs.getString("password"));
+			user.setEmail(rs.getString("email"));
 			user.setLevel(Level.valueOf(rs.getInt("level")));
 			user.setLogin(rs.getInt("login"));
 			user.setRecommend(rs.getInt("recommend"));
@@ -52,11 +53,12 @@ public class UserDaoJdbc implements UserDao {
 	public void add(User user) throws DuplicateKeyException {
 		try {
 			this.jdbcTemplate.update(
-					"insert into users(id, name, password, level, login, recommend) " +
-					"values(?,?,?,?,?,?)",
+					"insert into users(id, name, password, email, level, login, recommend) " +
+					"values(?,?,?,?,?,?,?)",
 					user.getId(),
 					user.getName(),
 					user.getPassword(),
+					user.getEmail(),
 					
 					/*
 					 * Level 타입은 enum 오브젝트이므로 DB에 들어갈 수 없음

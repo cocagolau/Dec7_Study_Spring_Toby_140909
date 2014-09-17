@@ -16,6 +16,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.MailSender;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -29,6 +31,9 @@ public class UserServiceTest {
 	
 //	@Autowired
 //	DataSource dataSource;
+	
+	@Autowired
+	MailSender mailSender;
 	
 	@Autowired
 	PlatformTransactionManager transactionManager;
@@ -47,11 +52,11 @@ public class UserServiceTest {
 		 * 각각 데이터의 경계값을 선택하여 테스트
 		 */
 		users = Arrays.asList(
-				new User("dec1", "동규1", "pw1", Level.BASIC, UserService.MIN_LOGCOUNT_FOR_SILVER-1, 0),
-				new User("dec2", "동규2", "pw2", Level.BASIC, UserService.MIN_LOGCOUNT_FOR_SILVER, 0),
-				new User("dec3", "동규3", "pw3", Level.SILVER, 60, UserService.MIN_RECOMMEND_FOR_GOLD-1),
-				new User("dec4", "동규4", "pw4", Level.SILVER, 60, UserService.MIN_RECOMMEND_FOR_GOLD),
-				new User("dec5", "동규5", "pw5", Level.GOLD, 100, 100)
+				new User("dec1", "동규1", "pw1", "dec1@gmail.com", Level.BASIC, UserService.MIN_LOGCOUNT_FOR_SILVER-1, 0),
+				new User("dec2", "동규2", "pw2", "dec2@gmail.com", Level.BASIC, UserService.MIN_LOGCOUNT_FOR_SILVER, 0),
+				new User("dec3", "동규3", "pw3", "dec3@gmail.com",Level.SILVER, 60, UserService.MIN_RECOMMEND_FOR_GOLD-1),
+				new User("dec4", "동규4", "pw4", "dec4@gmail.com",Level.SILVER, 60, UserService.MIN_RECOMMEND_FOR_GOLD),
+				new User("dec5", "동규5", "pw5", "dec5@gmail.com",Level.GOLD, 100, 100)
 			);
 	}
 	
@@ -66,12 +71,18 @@ public class UserServiceTest {
 	
 	
 	@Test
+	// 컨텍스트의 DI설정을 변경하는 테스트라는 것을 알려줌
+	@DirtiesContext
 	public void upgradeLevels() throws Exception {
 		userDao.deleteAll();
 		
 		for (User user : users) {
 			userDao.add(user);
 		}
+		
+		// 메일 발송 결과를 테스트할 수 있도록 목 오브젝트를 만들어 userService의 의존 오브젝트로 주입
+		MockMailSender mockMailSender = new MockMailSender();
+		userService.setMailSender(mockMailSender);
 		
 		userService.upgradeLevels();
 		
@@ -93,7 +104,11 @@ public class UserServiceTest {
 		checkLevelUpgraded(users.get(3), true);
 		checkLevelUpgraded(users.get(4), false);
 		
-		
+		// mock 오브젝트에 저장된 메일 수신자 목록을 가져와 업그레이드 대상과 일치하는지 확인
+		List<String> request = mockMailSender.getRequests();
+		assertThat(request.size(), is(2));
+		assertThat(request.get(0), is(users.get(1).getEmail()));
+		assertThat(request.get(1), is(users.get(3).getEmail()));
 	}
 
 	@Test
@@ -145,6 +160,7 @@ public class UserServiceTest {
 		testUserService.setUserDao(this.userDao);
 //		testUserService.setDataSource(this.dataSource);
 		testUserService.setTransactionManager(transactionManager);
+		testUserService.setMailSender(mailSender);
 		
 		userDao.deleteAll();
 		
@@ -176,6 +192,33 @@ public class UserServiceTest {
 		 *  - 전체 성공 혹은 전체 실패
 		 */
 	}
+	
+	/*
+	 * sendUpgradeEmail 테스트
+	 * 
+	 * javax.mail.MessagingException: Could not connect to SMTP host
+	 *  - 메일서버가 준비되지 않았으므로
+	 * 
+	 * 
+	 * 방법?
+	 *  1. 메일서버 준비?
+	 *  	- 운영중인 메일서버 부담 / 실제 메일이 발송됨
+	 *  
+	 *  2. 테스트용 메일서버 준비?
+	 *  	- 메일발송기능은 사용자레벨 업그레이드의 보조기능 불과함
+	 *  	- DB에 잘 반영되었는가하는 문제보다 덜 중요
+	 *  	- 메일이 잘 도착했는지만 테스트하기는 엄밀하게 불가능
+	 * 
+	 *  3. 테스트용 JavaMail 사용
+	 *  	- 구조
+	 *  		- UserService --> JavaMail --> 테스트용 메일서버
+	 *  		- UserService --> 테스트용 JavaMail
+	 *  	- JavaMail은 자바의 표준기술로 안정적 
+	 *  		- JavaMail API를 통해 요청이 가능할 경우 테스트할 때마다 JavaMail을 수행하여 외부 서버를 사용할 필요 없음 
+	 * 
+	 * 
+	 * 5.4.3, 테스트위한 서비스 추상
+	 */
 
 
 }

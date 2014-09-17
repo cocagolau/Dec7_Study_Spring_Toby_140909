@@ -11,60 +11,41 @@
 		<property name="password" value="book" />
 	</bean>
 	
-	<!-- 새로운 jdbcContext를 bean으로 등록 -->
-	<!-- 
-		수동 DI를 위해 bean에서 제거
-	<bean id="jdbcContext" class="me.dec7.user.dao.JdbcContext">
-		<property name="dataSource" ref="dataSource" />
-	</bean>
-	-->
+
 	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="dataSource" />
 	</bean>
 	
-	<!-- <bean id="transactionManager" class="org.springframework.transaction.jta.JtaTransactionManager" /> -->
+	<!-- 
+		JavaMailSenderImpl
+		 - spring이 직접 제공하는 MailSender를 구현한 추상화 클래스
+		 - JavaMail이 아닌경우 다른 메시징 서버의 API를 이용하는 MailSender 구현 클래스를 만들어 DI
+		 
+		 따라서, 하위 계층은 메일발송에 대한 요청만 충실히 수행
+		 메일 발송 방식이 바뀌어도 로지니스 로직과 바뀌지 않음
+		 
+		 심화
+		  - 만약 메일 발송기능에 트랜잭션을 사용하려면...
+		  1) 메일을 업그레이드할 사용자 발견시 발송하지 않고 발송 대상을 별도의 목록에 저장해두기..
+		  	- 업그레이드 작업 모두 성공시 발송
+		  	- 단점: 메일 저장 리스트 등을 파라미터로 계속 가지고 다녀야 하는것.
+		  2) MailSender를 확장해 메일 전송에 트랜잭션 개념을 적용
+		  	- MailSender 구현한 트랜잭션 개념이 들어간 클래스 만듦
+		  	- MailSender.send() 호출해도 발송하지않고 대기했다가 업그레이드 완료시 발송
+	 -->
+	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="host" value="mail.server.com" />
+	</bean>
 	
-		
 	<bean id="userService" class="me.dec7.user.service.UserService">
 		<property name="userDao" ref="userDao" />
-		<!-- <property name="dataSource" ref="dataSource" /> -->
 		<property name="transactionManager" ref="transactionManager" />
+		<property name="mailSender" ref="mailSender" />
 	</bean>
 	
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
-		
-		<!-- bean 의존관계 변경 -->
-		<!-- 
-		수동 DI를 위해 bean에서 제거
-		<property name="jdbcContext" ref="jdbcContext" />
-		-->
 	</bean>
-	
-	<!-- p303, oracle 에러코드 맵핑 파일 
-	맵핑되는 예외는 모두 DataAccessException의 subtype
-	
-	<bean id="Oracle" class="org.springframework.jdbc.support.SQLErrorCodes">
-		<property name="badSqlGrammerCodes">
-			<value>900,903,904,917,936,942,10076</value>
-		</property>
-		<property name="invalidResultSetAccessCodes">
-			<value>17003</value>
-		</property>
-		<property name="duplicateKeyCodes">
-			<value>1</value>
-		</property>
-		<property name="dataIntegrityViolationCodes">
-			<value>1400,1722,2291,2292</value>
-		</property>
-		<property name="dataAccessResourceFailureCodes">
-			<value>17002,17447</value>
-		</property>
-	</bean>
-	-->
-	
-	
-	
 
 
 </beans>
