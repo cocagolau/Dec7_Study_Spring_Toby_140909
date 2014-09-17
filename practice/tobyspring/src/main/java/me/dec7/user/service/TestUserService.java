@@ -10,6 +10,33 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 /*
+ * 5.3, 서비스 추상화와 단일 책임 원칙
+ * 
+ * UserDao, UserService는 관심을 불리하고 독자적으로 확장 가능하도록 만듦
+ *  - 같은 어플리케이션 로직 코드지만 내용에 따라 분리
+ *  - 같은 계층에서 수평적인 분리라 할 수 있음
+ *  
+ * 트랜젝션 추상화
+ *  - 위와 좀 다르게, 
+ *    어플리케이션의 비지니스 로직과 그 하위에서 동작하는 로우레벨의 트랜잭션 기술이
+ *    아예 다른 계층의 특성을 갖는 코드를 분리한 것
+ *    
+ * 수평, 수직 계층구조
+ *  - DI로 계층구조로 구성, 결합도 낮춤
+ *  
+ * 단일 책임 원칙
+ *  - 하나의 모듈은 한 가지 책임 (적절한 분리)
+ *  - UserService에 JDBC connection을 직접 처리할 때
+ *  	1) 사용자 레벨 업그레이드 처럼, 사용자 관리 로직에 대한 관심
+ *  	2) sql connection에 대한 관심 
+ *  
+ *  - 장점
+ *  	- 어떤 변경이 필요할 때 수정 대상이 명확해짐
+ *  	- 이를 가능토록 하는 기술이 DI / interface 사용
+ *  
+ */
+
+/*
  * p351, 테스트용 UserService 대역
  * 
  * 작업 중간에 예외를 생성하는 방법?
