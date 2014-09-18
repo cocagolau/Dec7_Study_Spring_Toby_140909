@@ -9,13 +9,25 @@ import me.dec7.user.domain.User;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 
-
 /*
- * UserService interface의 구현클래스인 UserServiceImple은
- * 기존 UserService 클래스의 내용을 대부분 유지
- * 단, 트랜잭션과 관련된 코드는 독립시키기로 했으니 모두 제거 가능
+ *  6.2.., 테스트를 위한 UserServiceImpl 고립
+ *   - PlatformTransactionManager는 UserServiceTx로 분리
+ *     UserServiceImpl은 의존하지 않음
+ *     
+ *   고립된 테스트가 가능하도록 UserService를 재구성하면
+ *    - MockUserDao, MockMailSender의 두개의 Mock 오브젝트에만 의존시 완벽하게 고립됨
+ * 
+ * UserServiceImpl의 upgradeLevels() 메소드는 return값이 void형.
+ *  - 메소드를 받고 그 결과를 검증은 불가능
+ *  - dao를 통해 필요한 정보를 가져오고 작업 후 DB에 재반영. 그 결과를 확인위해서 db를 직접 확인해야함.
+ *  - 그래서 기존엔 DB결과를 재조회하는 방법으로 테스트함
+ *  --> 이 경우 테스트대상인 UserServiceImpl과 그 협렵 오브젝트인 UserDao에게 어떤 요청을 했는지 확인하는 작업 필요
+ *  	테스트 중 DB에 결과가 반영되지 않더라도
+ *  	UserDao의 update() 메소드를 호출하는 것을 확인할 수만 있다면 결과가 반영될 것이라고 결론 내릴 수 있기 때문
+ *  --> 따라서 UserDao 같은 역할
+ *  	UserServiceImpl과 커뮤니케이션하면서 주고 받은 정보를 저장 후
+ *  	검증할 수 있는 목 오브젝트 필요
  */
-
 public class UserServiceImpl implements UserService {
 	
 	public static final int MIN_LOGCOUNT_FOR_SILVER = 50;
@@ -33,27 +45,10 @@ public class UserServiceImpl implements UserService {
 		this.mailSender = mailSender;
 	}
 
-	// 트랜잭션에 사용한 dataSoruce; setter method injection
-	/*
-	public void setDataSource(DataSource dataSource) {
-		this.dataSource = dataSource;
-	}
-	*/
-	
-	/*
-	protected PlatformTransactionManager transactionManager;
-	public void setTransactionManager(PlatformTransactionManager transactionManager) {
-		this.transactionManager = transactionManager;
-	}
-	*/
-
-	/*
-	 * TestUserService에서 접근할 수있도록 접근권한을 protected로 변경
-	 *
-	private void upgradeLevel(User user) {
-	*/
 	protected void upgradeLevel(User user) {
 		user.upgradeLevel();
+		
+		// 수정된 사용자 정보를 DB에 반영
 		userDao.update(user);
 		sendUpgradeEmail(user);
 	}
@@ -70,6 +65,7 @@ public class UserServiceImpl implements UserService {
 	}
 
 	public void upgradeLevels() {
+		
 		List<User> users = userDao.getAll();
 		
 		for (User user : users) {
@@ -81,11 +77,6 @@ public class UserServiceImpl implements UserService {
 		}
 	}
 
-	/*
-	 * TestUserService에서 접근할 수있도록 접근권한을 protected로 변경
-	 *
-	private boolean canUpgradeLevel(User user) {
-	*/
 	protected boolean canUpgradeLevel(User user) {
 		Level currentLevel = user.getLevel();
 		
