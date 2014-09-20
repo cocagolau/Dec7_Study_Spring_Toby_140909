@@ -1,7 +1,9 @@
-package me.dec7.learningtest.spring.factorybean;
+package me.dec7.learningtest.factorybean;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
+import me.dec7.learningtest.spring.factorybean.Message;
+import me.dec7.learningtest.spring.factorybean.MessageFactoryBean;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

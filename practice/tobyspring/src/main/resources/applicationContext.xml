@@ -20,11 +20,41 @@
 		<property name="host" value="mail.server.com" />
 	</bean>
 	
+	<bean id="transactionAdvice" class="me.dec7.user.service.TransactionAdvice">
+		<property name="transactionManager" ref="transactionManager" />
+	</bean>
+	
+	<bean id="transactionPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
+		<property name="mappedName" value="upgrade*" />
+	</bean>
+	
+	<bean id="transactionAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
+		<property name="advice" ref="transactionAdvice" />
+		<property name="pointcut" ref="transactionPointcut" />
+	</bean>
+	
+	<bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<property name="target" ref="userServiceImpl" />
+		
+		<!-- 
+			advice와 advisor를 동시에 설정해 줄수 있는 property
+			list에 advice나 advisor의 bean id를 값으로 넣어주면 됨
+			기존 ref attribute를 사용하는 DI 방식과 다름을 주의
+		 -->
+		<property name="interceptorNames">
+			<list>
+				<!-- 한개 이상의 value 태그를 넣을 수 있음 -->
+				<value>transactionAdvisor</value>
+			</list>
+		</property>
+	</bean>
+	
 	<!-- <bean id="userService" class="me.dec7.user.service.UserServiceTx">
 		<property name="userDao" ref="userDao" />
 		<property name="transactionManager" ref="transactionManager" />
 		<property name="userService" ref="userServiceImpl" />
 	</bean> -->
+	<!--
 	<bean id="userService" class="me.dec7.user.service.TxProxyFactoryBean">
 		<property name="target" ref="userServiceImpl" />
 		<property name="transactionManager" ref="transactionManager" />
@@ -33,9 +63,10 @@
 			serviceInterfaces는 Class타입
 			Class타입은 value를 사용해 Class 혹은 Interface의 이름을 넣어주면됨
 			spring은 수정자메소드의 파라미터타입을 확인해 자동변환
-		-->
+		
 		<property name="serviceInterface" value="me.dec7.user.service.UserService" />
 	</bean>
+	-->
 	
 	<bean id="userServiceImpl" class="me.dec7.user.service.UserServiceImpl">
 		<property name="userDao" ref="userDao" />

@@ -20,6 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.mail.MailSender;
@@ -265,8 +266,9 @@ public class UserServiceTest {
 		  * Factory Bean 자체를 가져와야 하므로
 		  * bean 이름에 &을 꼭 넣어야함
 		  */
-		 TxProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", TxProxyFactoryBean.class);
-		 txProxyFactoryBean.setTarget(testUserService);
+		 // TxProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", TxProxyFactoryBean.class);
+		 ProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", ProxyFactoryBean.class);
+		 txProxyFactoryBean.setTarget(testUserService);		 
 		 
 		 // 변경된 타깃 설정을 사용해 다이나믹 프록시 오브젝트를 다시 생성
 		 UserService txUserService = (UserService) txProxyFactoryBean.getObject();

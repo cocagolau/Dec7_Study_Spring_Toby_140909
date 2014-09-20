@@ -55,6 +55,22 @@ import org.springframework.transaction.PlatformTransactionManager;
  *      
  */
 
+/*
+ * 6.4, Spring의 ProxyFactoryBean
+ *  - Spring은 일관된 방법으로 Proxy를 만들 수 있도록 추상레이어 제공
+ *  - Proxy 생성하여 bean으로 등록
+ *  - TxProxyFactoryBean과 다르게 ProxyFactoryBean은 순수하게 Proxy를 생성하는 작업만 담당
+ *    그리고, Proxy를 통해 제공해 줄 부가기능은 별도의 bean으로 둘 수 있음
+ *  - 생성된 Proxy에서 사용할 부가기능은 MethodInterceptor interface를 구현해서 만듦
+ *  	- MethodInterceptor는 InvocationHandler와 비슷
+ *  	- InvocationHandler의 invoke()는 target 오브젝트에 대한 정보를 제공하지 않아
+ *  	  target은 InvocationHandler를 구현한 클래스가 직접 알고 있어야 함
+ *  	- 하지만, MethodInterceptor의 invoke()는 ProxyFactoryBean으로부터 target 오브젝트의 정보도 함께 받고
+ *  	  target 오브젝트와 상관없이 독립적으로 만들어 질 수 있음
+ *  	- 따라서, MethodInterceptor 오브젝트는 target이 다른 여러 Proxy에서 함께 사용할 수 있고
+ *  	  Singleton bean으로 등록 가능 
+ * 
+ */
 public class TxProxyFactoryBean implements FactoryBean<Object> {
 	
 	Object target;
