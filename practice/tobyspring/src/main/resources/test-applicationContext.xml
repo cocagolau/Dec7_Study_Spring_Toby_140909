@@ -19,9 +19,18 @@
 	
 	<bean id="mailSender" class="me.dec7.user.service.DummyMailSender" />
 	
+	<!--
 	<bean id="userService" class="me.dec7.user.service.UserServiceTx">
 		<property name="transactionManager" ref="transactionManager" />
 		<property name="userService" ref="userServiceImpl" />
+	</bean>
+	-->
+	
+	<bean id="userService" class="me.dec7.user.service.TxProxyFactoryBean">
+		<property name="target" ref="userServiceImpl" />
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="pattern" value="upgradeLevels" />
+		<property name="serviceInterface" value="me.dec7.user.service.UserService" />
 	</bean>
 	
 	<bean id="userServiceImpl" class="me.dec7.user.service.UserServiceImpl">
@@ -32,7 +41,5 @@
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
 	</bean>
-	
-
 
 </beans>

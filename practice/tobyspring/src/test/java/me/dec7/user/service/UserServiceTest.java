@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.test.annotation.DirtiesContext;
@@ -68,9 +69,43 @@ import org.springframework.transaction.PlatformTransactionManager;
  *  	DummyMailSender, MockMailSender
  *  - me.dec7.user.service.UserServiceImpl 참고
  */
+
+/*
+ * add()
+ *  - @Autowired로 가져온 userService bean 사용
+ *  - TxProxyFactoryBean이 생성하는 다이나믹 프로시를 통해 UserService 기능을 사용할 것임
+ * 
+ * upgradeLevels(), mockUpgradeLevels()
+ *  - mock 오브젝트를 이요해 비지니스 로직에 대한 단위 테스트
+ *  - 트랜잭션과 무관
+ *  
+ * upgradeAllOrNothing()
+ *  - 수동 DI를 통해 직접 다이나믹 프록시를 만들어사용해 Factory Bean이 적용 안됨
+ *  - 기존 메소드 테스트는 예외 발생시 트랜잭션이 롤백됨을 확인위해 
+ *    비지니스 로직 코드를 수정한 TestUserService 오브젝트를 Target 오브젝트로 대신 사용
+ *  - 설정엔 정상적인 UserServiceImpl 오브젝트로 지정되었지만
+ *    테스트엔 TestUserService 오브젝트가 동작하도록 해야함
+ *  - 문제점
+ *  	- TransactionHandler와 Dynamic Proxy 오브젝트를 직접만들 때는
+ *  	  Target 오브젝트를 바꾸기 쉬웟지만, 
+ *  	  지금은 spring bean에서 생성되는 Proxy 오브젝트에 대해 테스트 해야하므로 어려움
+ *  	- target 오브젝트에 대한 레퍼런스는 TransactionHandler 오브젝트가 가지고 있지만
+ *  	  TrasnactionHandler는 TxProxyFactoryBean 내부에서 만들어져 Dynamic Proxy 생성에 사용될 뿐
+ *  	  별도 참조할 수 없다는 것
+ *  - 해결책
+ *  	- TxProxyFactoryBean의 트랜잭션을 지원하는 프록시를 바르게 만들어 주는지 확인하는게 목적
+ *  	  빈으로 등록된 팩토리빈을 가져와 직적 프록시를 만들어 보기
+ *  	- TxProxyFactoryBean을 가져와 target 프로퍼티를 재성성 후 
+ *  	  다시 프록시 오브젝트를 생성하도록 요청
+ *  	  이 경우, 컨텍스트의 설정을 변경하므로 @DirtiesContext를 등록 
+ */
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration("classpath:/test-applicationContext.xml")
 public class UserServiceTest {
+	
+	// factory bean을 가져오기 위해 context 필요
+	@Autowired
+	ApplicationContext context;
 	
 	@Autowired
 	UserService userService;
@@ -106,117 +141,32 @@ public class UserServiceTest {
 		assertThat(this.userService, is(notNullValue()));
 	}
 	
-	/*
-	 * 테스트 구성
-	 *  1. 테스트 실행 중
-	 *     UserDao를 통해 가져올 테스트 정보를 DB에 저장
-	 *     최종 의존대상이 DB, 직접 정보를 저장해야함
-	 *  2. 메일 발송여부 확인 위해 MailSender Mock 오브젝트를 DI
-	 *  3. 실제 테스트 대상 실행
-	 *  4. 결과를 DB에서 조회
-	 *  5. Mock 오브젝트를 통해 메일 발송이 있었는지 확인
-	 */
-	/*
-	 *  - DB를 접근하지 않음으로 테스트 수행성능 향상됨
-	 */
+	
 	@Test
 	@DirtiesContext
 	public void upgradeLevels() throws Exception {
-		
-		/*
-		 *  DB 테스트 데이터 준비
-		 *  레벨 업그레이드 후보가 될 사용자 목록을 받아옴
-		 *  
-		 *  따라서 테스트용 UserDao에서 DB에서 읽어온 것처럼 미리 준비된 사용자 목록을 제공해야 함
-		 *  userDao.update(user)는 리턴값이 없어 테스트용 UserDao가 할 일이 없음 (빈 메소드)
-		 *  하지만 update() 메소드 사용은 upgradeLevels()의 핵심 로직인
-		 *   - 전체 사용자 중에서 업그레이드 대상자는 레벨을 변경해준다'에서 '변경'을 담당
-		 *   - 그러므로 getAll()에 대해서 stub으로 update()에 목 오브젝트로 동작하는 UserDao타입의 테스트 대역 필요
-		 */
-		/*
-		userDao.deleteAll();
-		for (User user : users) {
-			userDao.add(user);
-		}
-		*/
-		
-		/*
-		 *  고립된 테스트에서는 테스트 대상 오브젝트를 직접 생성하면 됨
-		 *  
-		 *  테스트 대역 오브젝트를 이용해 완전히 고립된 테스트를 사용
-		 *   - @Autowired를 사용시 UserService 타입의 bean이었고 DI를 통해 많은 의존 오브젝트가 존재
-		 *   - 하지만 고립할 것이므로 spring에서 bean을 가져올 필요가 없음
-		 */
+
 		UserServiceImpl userServiceImpl = new UserServiceImpl();
-		
-		// Mock 오브젝트로 만든 UserDao를 직접 DI
-		// MockUserDao mockUserDao = new MockUserDao(this.users);
-		
-		/*
-		 * Mockito를 통해 만들어진 Mock오브젝트는 메소드 호출과 관련된 모든 내용을 자동 저장
-		 * 이를 간단한 메소드로 검증할 수 있도록 함
-		 * 
-		 * UserDao interface를 구현한 클래스를 만들 필요 없음
-		 * 반환 값을 생성자를 통해 넣어줬다가 메소드 호출 시 리턴하도록 코드를 만들 필요 없음
-		 * 
-		 * 사용 방법
-		 *  1. interface를 사용해 Mock 오브젝트 생성
-		 *  2. Mock 오브젝트가 반환할 값이 있으면 이를 지정
-		 *     호출시 예외를 강제로 던지게 할 수도 있음
-		 *  3. 테스트 대상 오브젝트에 DI해 Mock 오브젝트가 테스트 중 사용되도록 함
-		 *  4. 테스트 대상 오브젝트를 사용 후 Mock 오브젝트의 특정 메소드가 호출되었는지
-		 *     어떤 값을 가지고 몇 번 호출됐는지 검증
-		 * 
-		 */
-		
+
 		UserDao mockUserDao = mock(UserDao.class);
-		// getAll()을 호출할 때 this.users를 반환
+		
 		when(mockUserDao.getAll()).thenReturn(this.users);
 		userServiceImpl.setUserDao(mockUserDao);
 		
-		// 메일 발송확인 위해 Mock오브젝트 DI
-		// 메일 발송 결과를 테스트할 수 있도록 목 오브젝트를 만들어 userService의 의존 오브젝트로 주입
-		// MockMailSender mockMailSender = new MockMailSender();
 		MailSender mockMailSender = mock(MailSender.class);
-		// userService.setMailSender(mockMailSender);
 		userServiceImpl.setMailSender(mockMailSender);
 		
 		// 테스트 대상 실행
 		userServiceImpl.upgradeLevels();
 		
-		
-		/*
-		 * 테스트에서 확인하고자 하는 사항
-		 * 
-		 *  1. UserDao의 update()가 두번 호출
-		 *  2. 그때 파라미터는 getAll() 에서 넘겨준 User 목록의 두번째/네번째
-		 * 
-		 */
-		// 테스트를 진행하는 동안 mockUserDao의 update() 메소드가 두번 호출되었는 확인하고 싶다면..
 		verify(mockUserDao, times(2)).update(any(User.class));
-		// verify(mockUserDao, times(2)).update(any(User.class));
-		
-		// update() 호출시 users.get(1)이 파라미터로 호출된 적이 있는지 검증
 		verify(mockUserDao).update(users.get(1));
 		
-		// 반환값을 직접 비교
 		assertThat(users.get(1).getLevel(), is(Level.SILVER));
 		
 		verify(mockUserDao).update(users.get(3));
 		assertThat(users.get(3).getLevel(), is(Level.GOLD));
 		
-		/*
-		List<User> updated = mockUserDao.getUpdated();
-		assertThat(updated.size(), is(2));
-		checkUserAndLevel(updated.get(0), "dec2", Level.SILVER);
-		checkUserAndLevel(updated.get(1), "dec4", Level.GOLD);
-		*/
-		
-		/*
-		 * MailSender는 ArgumentCaptor 사용
-		 *  - 실제 MailSender Mock 오브젝트에서 전달된 파라미터를 가져와 내용을 검증하는 방법
-		 *  - 파라미터를 직접 비교보다, 내부 정보를 확인해야하는 경우에 유용
-		 */
 		ArgumentCaptor<SimpleMailMessage> mailMessageArg = ArgumentCaptor.forClass(SimpleMailMessage.class);
 		// 파라미터를 정밀하게 검사하기 위해 캡쳐할 수도 있음
 		verify(mockMailSender, times(2)).send(mailMessageArg.capture());
@@ -225,29 +175,14 @@ public class UserServiceTest {
 		assertThat(mailMessages.get(0).getTo()[0], is(users.get(1).getEmail()));
 		assertThat(mailMessages.get(1).getTo()[0], is(users.get(3).getEmail()));
 		
-		// DB에 저장된 결과 확인
-		/*
-		checkLevelUpgraded(users.get(0), false);
-		checkLevelUpgraded(users.get(1), true);
-		checkLevelUpgraded(users.get(2), false);
-		checkLevelUpgraded(users.get(3), true);
-		checkLevelUpgraded(users.get(4), false);
-		*/
-		
-		// mock 오브젝트에 저장된 메일 수신자 목록을 가져와 업그레이드 대상과 일치하는지 확인
-		/*
-		List<String> request = mockMailSender.getRequests();
-		assertThat(request.size(), is(2));
-		assertThat(request.get(0), is(users.get(1).getEmail()));
-		assertThat(request.get(1), is(users.get(3).getEmail()));
-		*/
 	}
 
 	private void checkUserAndLevel(User updated, String expectedId, Level expectedLevel) {
 		assertThat(updated.getId(), is(expectedId));
 		assertThat(updated.getLevel(), is(expectedLevel));		
 	}
-
+	
+	
 	@Test
 	public void add() {
 		userDao.deleteAll();
@@ -297,6 +232,8 @@ public class UserServiceTest {
 	 */
 	// @Test(expected=AssertionError.class)
 	@Test(expected=TestUserServiceException.class)
+	// Context 무효화 어노테이션
+	@DirtiesContext
 	public void upgradeAllOrNothing() throws Exception {
 		TestUserService testUserService = new TestUserService(users.get(3).getId());
 		
@@ -306,9 +243,69 @@ public class UserServiceTest {
 		 // testUserService.setTransactionManager(transactionManager);
 		 
 		 // 트랜잭션 기능을 분리한 UserServiceTx는 예외 발생용으로 수정할 필요가 없음
+		 /*
 		 UserServiceTx txUserService = new UserServiceTx();
 		 txUserService.setTransactionManager(transactionManager);
 		 txUserService.setUserService(testUserService);
+		 */
+		 // Dynamic Proxy 사용
+		 /*
+		 TransactionHandler txHandler = new TransactionHandler();
+		 txHandler.setTarget(testUserService);
+		 txHandler.setTransactionManager(transactionManager);
+		 txHandler.setPattern("upgradeLevels");
+		 
+		 UserService txUserService = (UserService) Proxy.newProxyInstance(
+				 	getClass().getClassLoader(),
+				 	new Class[] { UserService.class },
+				 	txHandler
+				 );
+		*/
+		 /*
+		  * Factory Bean 자체를 가져와야 하므로
+		  * bean 이름에 &을 꼭 넣어야함
+		  */
+		 TxProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", TxProxyFactoryBean.class);
+		 txProxyFactoryBean.setTarget(testUserService);
+		 
+		 // 변경된 타깃 설정을 사용해 다이나믹 프록시 오브젝트를 다시 생성
+		 UserService txUserService = (UserService) txProxyFactoryBean.getObject();
+		 
+		 
+		 
+		/*
+		 * 문제점
+		 *  - Proxy클래스의 newProxyInstance()라는 static method를 통해서만 만들 수 있음
+		 *  - DI대상인 다이나믹 프록시 오브젝트는 bean으로 등록할 수 없음
+		 *  	- 기본적으로 class이름, property로 정의
+		 *  	- spring은 reflection을 사용해 class이름으로 오브젝트 생성 --> bean 등록
+		 *  		- Date now = (Date) Class.forName("java.util.Data").newInstance();
+		 *  	- Dynamic Proxy는 위 방식으로 오브젝트가 생성되지 않음
+		 *  		- 사실 Class자체도 내부적으로 다이나믹하게 새로 정의하므로
+		 *			  Dynamic Proxy 오브젝트의 클래스가 뭔지도 모름
+		 *			- 따라서, proxy 오브젝트의 클래스 정보를 미리 알아내 스프링 빈에 정의할 수 없음
+		 *
+		 * 
+		 * 팩토리 빈
+		 *  - 다양한 빈 생성방법 중 스프링에서 제공하는 한가지
+		 *  - Spring을 대신해 오브젝트의 생성 로직을 담당하도록 만들어진 특별한 빈
+		 *  - Factory bean을 만드는 방법 중 가장 간단한 것은
+		 *  	FactoryBean interface를 구현하는 것
+
+			public interface FactoryBean<T> {
+				// bean object를 생성ㅊ해 돌려줌
+				T getObject() throws Exception;
+				
+				// 생성되는 오브젝트 타입을 알려줌
+				Class<? extends T> getObjectType();
+				
+				// getObject()가 돌려주는 오브젝트가 항상 같은 싱글톤인지 알려줌
+				boolean isSingleton();
+			}
+
+		 * 
+		 */
+				 
 		
 		userDao.deleteAll();
 		

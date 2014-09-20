@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	<!--
+		FactoryBean의 설정방법
+		
+		다른 Bean 설정과 다른 점은 bean 오브젝트 타입이 Message 타입
+			1. Message bean의 타입은 MessageFactoryBean의 getObjectType() 메소드가 돌려주는 타입으로 결정
+			2. getObject() 메소드가 생성해주는 오브젝트가 message bean의 오브젝트가 됨
+	-->
+	<bean id="message" class="me.dec7.learningtest.spring.factorybean.MessageFactoryBean">
+		<property name="text" value="Factory Bean"></property>
+	</bean>
+	
+
+
+</beans>

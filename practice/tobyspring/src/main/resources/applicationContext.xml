@@ -20,10 +20,21 @@
 		<property name="host" value="mail.server.com" />
 	</bean>
 	
-	<bean id="userService" class="me.dec7.user.service.UserServiceTx">
-		<!-- <property name="userDao" ref="userDao" /> -->
+	<!-- <bean id="userService" class="me.dec7.user.service.UserServiceTx">
+		<property name="userDao" ref="userDao" />
 		<property name="transactionManager" ref="transactionManager" />
 		<property name="userService" ref="userServiceImpl" />
+	</bean> -->
+	<bean id="userService" class="me.dec7.user.service.TxProxyFactoryBean">
+		<property name="target" ref="userServiceImpl" />
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="pattern" value="upgradeLevels" />
+		<!-- 
+			serviceInterfaces는 Class타입
+			Class타입은 value를 사용해 Class 혹은 Interface의 이름을 넣어주면됨
+			spring은 수정자메소드의 파라미터타입을 확인해 자동변환
+		-->
+		<property name="serviceInterface" value="me.dec7.user.service.UserService" />
 	</bean>
 	
 	<bean id="userServiceImpl" class="me.dec7.user.service.UserServiceImpl">
