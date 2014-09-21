@@ -1,7 +1,6 @@
 package me.dec7.user.service;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
@@ -111,8 +110,15 @@ public class UserServiceTest {
 	@Autowired
 	UserService userService;
 	
+//	@Autowired
+//	UserServiceImpl userServiceImpl;
+	
 	@Autowired
-	UserServiceImpl userServiceImpl;
+	/*
+	 * 같은 타입의 bean이 두개 존재하기 때문에 field 이름을 기준으로 bean이 결정됨
+	 * 자동 프록시 생성기에 의해 transaction 부가기능이 testUserSerivice bean에 적용되었는지 확인하는 것이 목적
+	 */
+	UserService testUserService;
 	
 	@Autowired
 	MailSender mailSender;
@@ -206,13 +212,7 @@ public class UserServiceTest {
 		assertThat(userWithoutLevelRead.getLevel(), is(Level.BASIC));
 		
 	}
-	/*
-	 * 리팩토링
-	private void checkLevel(User user, Level expectedLevel) {
-		User userUpdate = userDao.get(user.getId());
-		assertThat(userUpdate.getLevel(), is(expectedLevel));
-	}
-	*/
+
 	private void checkLevelUpgraded(User user, boolean upgraded) {
 		User userUpdate = userDao.get(user.getId());
 		
@@ -225,108 +225,78 @@ public class UserServiceTest {
 		}
 	}
 	
-	
 	/*
-	 * 트랜잭션 경계설정 코드 분리와 DI를 통한 연결 장점
-	 *  1. 비지니스 로직인 UserServiceImpl 코드는 기술적인 내용을 전혀 신경쓰지 않아도 됨
-	 *  2. 비지니스 로직에 대한 테스트를 쉽게 만들 수 있음
+	 * 자동 프록시 생성기를 통해 testUserService가 알맞는 bean에 적용되는지 확인
 	 */
-	// @Test(expected=AssertionError.class)
+	@Test
+	public void advisorAutoProxyCreator() {
+		assertThat(testUserService, is(instanceOf(java.lang.reflect.Proxy.class)));
+	}
+	
 	@Test(expected=TestUserServiceException.class)
-	// Context 무효화 어노테이션
-	@DirtiesContext
+	/*
+	 *  @DirtiesContext
+	 *  spring context의 bean 설정ㄴ을 변경하지 않으므로 제거 
+	 *  모든 test를 위한 DI 작업은 설정파일을 통해 서버에서 진행되므로 테스트 코드는 간단해짐
+	 */
+
 	public void upgradeAllOrNothing() throws Exception {
+		/*
 		TestUserService testUserService = new TestUserService(users.get(3).getId());
 		
 		// 수동 DI	
-		 testUserService.setUserDao(this.userDao);
-		 testUserService.setMailSender(mailSender);
-		 // testUserService.setTransactionManager(transactionManager);
+		testUserService.setUserDao(this.userDao);
+		testUserService.setMailSender(mailSender);
+
+		ProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", ProxyFactoryBean.class);
+		txProxyFactoryBean.setTarget(testUserService);		 
 		 
-		 // 트랜잭션 기능을 분리한 UserServiceTx는 예외 발생용으로 수정할 필요가 없음
-		 /*
-		 UserServiceTx txUserService = new UserServiceTx();
-		 txUserService.setTransactionManager(transactionManager);
-		 txUserService.setUserService(testUserService);
-		 */
-		 // Dynamic Proxy 사용
-		 /*
-		 TransactionHandler txHandler = new TransactionHandler();
-		 txHandler.setTarget(testUserService);
-		 txHandler.setTransactionManager(transactionManager);
-		 txHandler.setPattern("upgradeLevels");
-		 
-		 UserService txUserService = (UserService) Proxy.newProxyInstance(
-				 	getClass().getClassLoader(),
-				 	new Class[] { UserService.class },
-				 	txHandler
-				 );
+		UserService txUserService = (UserService) txProxyFactoryBean.getObject();
 		*/
-		 /*
-		  * Factory Bean 자체를 가져와야 하므로
-		  * bean 이름에 &을 꼭 넣어야함
-		  */
-		 // TxProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", TxProxyFactoryBean.class);
-		 ProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", ProxyFactoryBean.class);
-		 txProxyFactoryBean.setTarget(testUserService);		 
-		 
-		 // 변경된 타깃 설정을 사용해 다이나믹 프록시 오브젝트를 다시 생성
-		 UserService txUserService = (UserService) txProxyFactoryBean.getObject();
-		 
-		 
-		 
-		/*
-		 * 문제점
-		 *  - Proxy클래스의 newProxyInstance()라는 static method를 통해서만 만들 수 있음
-		 *  - DI대상인 다이나믹 프록시 오브젝트는 bean으로 등록할 수 없음
-		 *  	- 기본적으로 class이름, property로 정의
-		 *  	- spring은 reflection을 사용해 class이름으로 오브젝트 생성 --> bean 등록
-		 *  		- Date now = (Date) Class.forName("java.util.Data").newInstance();
-		 *  	- Dynamic Proxy는 위 방식으로 오브젝트가 생성되지 않음
-		 *  		- 사실 Class자체도 내부적으로 다이나믹하게 새로 정의하므로
-		 *			  Dynamic Proxy 오브젝트의 클래스가 뭔지도 모름
-		 *			- 따라서, proxy 오브젝트의 클래스 정보를 미리 알아내 스프링 빈에 정의할 수 없음
-		 *
-		 * 
-		 * 팩토리 빈
-		 *  - 다양한 빈 생성방법 중 스프링에서 제공하는 한가지
-		 *  - Spring을 대신해 오브젝트의 생성 로직을 담당하도록 만들어진 특별한 빈
-		 *  - Factory bean을 만드는 방법 중 가장 간단한 것은
-		 *  	FactoryBean interface를 구현하는 것
 
-			public interface FactoryBean<T> {
-				// bean object를 생성ㅊ해 돌려줌
-				T getObject() throws Exception;
-				
-				// 생성되는 오브젝트 타입을 알려줌
-				Class<? extends T> getObjectType();
-				
-				// getObject()가 돌려주는 오브젝트가 항상 같은 싱글톤인지 알려줌
-				boolean isSingleton();
-			}
-
-		 * 
-		 */
-				 
-		
 		userDao.deleteAll();
 		
 		for (User user : users) {
 			userDao.add(user);
 		}
 		
-		// 트랜잭션 기능을 분리한 오브젝트를 통해 예외발생용 TestUserService가 호출되게 해야함
-		txUserService.upgradeLevels();
-		/*
-		try {
-			// TestUserService는 업그레이드시 예외 발생시 정상
-			fail("TestUserServiceException expected");
-		} catch (TestUserServiceException e) {
-			
-		}*/
-		
-		// 예외 발생 전 레벨 변경이 있었던 사용자의 레벨이 처음 상태로 바뀌었는지 확인
+		this.testUserService.upgradeLevels();
+		// txUserService.upgradeLevels();
+	
 		checkLevelUpgraded(users.get(1), false);
 	}
+	
+	/*
+	 * 두가지 문제점 
+	 *  1. TestUserService는 UserServiceTest 클래스 내부에 정의된 static 클래스?
+	 *  2. pointcut이 taansactionAdvisor를 정요해주는 대상 클래스이름의 패턴과 다름
+	 */
+	static class TestUserServiceImpl extends UserServiceImpl {
+		private String id = "dec2";
+		
+		protected void upgradeLevel(User user) {
+			if (user.getId().equals(this.id)) {
+				throw new TestUserServiceException();
+			}
+			
+			super.upgradeLevel(user);
+		}
+	}
+	
+	/*
+	 * 후처리 bean 메커니즘 이용
+	 * 
+	 * 확인사항
+	 *  1. transaction이 필요한 bean에 부가기능이 적용되었는가?
+	 *  	- upgradeAllOrNothing()
+	 *  	- 정상적으로 commit되는 경우 transaciton 적용여부 확인 어려우므로
+	 *  	  예외상황에서 transaction이 rollback되게 함으로써 적용여부 테스트
+	 *  2. 아무 bean에 transaction 부가기능이 적용되는 것 아닌지 호가인
+	 *  	- advisorAutoProxyCreator()
+	 *  	- proxy 자동생성기가 advisor bean에 연결해둔 pointcut의 class filter를 이용해
+	 *  	  원하는 bean에만 proxy를 생성했는지 확인
+	 *  	- pointcut bean의 class이름 패턴을 변경해 testUserService bean에 transaction 적용 안되도록
+	 * 
+	 */
 
 }

@@ -6,76 +6,87 @@
 	
 	<bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
 		<property name="driverClass" value="com.mysql.jdbc.Driver" />
-		<property name="url" value="jdbc:mysql://localhost/springbook" />
+		<property name="url" value="jdbc:mysql://localhost/springbooktest" />
 		<property name="username" value="spring" />
 		<property name="password" value="book" />
 	</bean>
 	
-
+	<!-- 새로운 jdbcContext를 bean으로 등록 -->
+	
 	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="dataSource" />
-	</bean>
+	</bean>	
+	<bean id="mailSender" class="me.dec7.user.service.DummyMailSender" />
 	
-	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
-		<property name="host" value="mail.server.com" />
-	</bean>
 	
+	<!-- 
+		자동 프록시 생성기 <DefaultAdvisorAutoProxyCreator>는 등록된 bean 중에서
+		Advisor interface를 구현할 것을 모두 찾음
+		
+		그리고, 생성되는 모든 bean에 대해 advisor의 pointcut을 적용해 보면서 proxy 적용 대상을 선정
+		bean 클래스가 proxy선정 대상일 경우 proxy를 만들어 원래 bean 오브젝트로 바꿔치기함
+		 - 원래 bean 오브젝트는 proxy 뒤에 연결돼서 proxy를 통해서만 접근 가능하게 바꾸는 것
+		 - target bean에 의존한다고 정의한 다른 bean은 proxy 오브젝트를 대신 DI 받게 될 것
+	 -->
+	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" />
+	
+	<!-- pointcut 등록 -->
+	<!--
+	<bean id="transactionPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
+		<property name="mappedName" value="upgrade*" />
+	</bean>
+	-->
+
+	<!-- 
+		AspectJ 적용하기 위해 기존 pointcut bean 제거
+		
+	<bean id="transactionPointcut" class="me.dec7.user.service.NameMatchClassMedthodPointcut">
+		<!-- class 이름 패턴 
+		<property name="mappedClassName" value="*ServiceImpl" />
+		<!-- method 이름 패턴
+		<property name="mappedName" value="upgrade*" />
+	</bean>
+	-->
+	<bean id="transactionPointcut" class="org.springframework.aop.aspectj.AspectJExpressionPointcut">
+		<property name="expression" value="execution(* *..*ServiceImpl.upgrade*(..))" />
+	</bean>
+		
+
 	<bean id="transactionAdvice" class="me.dec7.user.service.TransactionAdvice">
 		<property name="transactionManager" ref="transactionManager" />
 	</bean>
 	
-	<bean id="transactionPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
-		<property name="mappedName" value="upgrade*" />
-	</bean>
 	
 	<bean id="transactionAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
 		<property name="advice" ref="transactionAdvice" />
 		<property name="pointcut" ref="transactionPointcut" />
 	</bean>
 	
+	<!--
+		ProxyFactoryBean 제거
+		DefaultAdvisorAutoProxyCreator에 의해 자동 수집
+		  
 	<bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean">
 		<property name="target" ref="userServiceImpl" />
-		
-		<!-- 
-			advice와 advisor를 동시에 설정해 줄수 있는 property
-			list에 advice나 advisor의 bean id를 값으로 넣어주면 됨
-			기존 ref attribute를 사용하는 DI 방식과 다름을 주의
-		 -->
 		<property name="interceptorNames">
 			<list>
-				<!-- 한개 이상의 value 태그를 넣을 수 있음 -->
 				<value>transactionAdvisor</value>
 			</list>
 		</property>
 	</bean>
-	
-	<!-- <bean id="userService" class="me.dec7.user.service.UserServiceTx">
-		<property name="userDao" ref="userDao" />
-		<property name="transactionManager" ref="transactionManager" />
-		<property name="userService" ref="userServiceImpl" />
-	</bean> -->
-	<!--
-	<bean id="userService" class="me.dec7.user.service.TxProxyFactoryBean">
-		<property name="target" ref="userServiceImpl" />
-		<property name="transactionManager" ref="transactionManager" />
-		<property name="pattern" value="upgradeLevels" />
-		<!-- 
-			serviceInterfaces는 Class타입
-			Class타입은 value를 사용해 Class 혹은 Interface의 이름을 넣어주면됨
-			spring은 수정자메소드의 파라미터타입을 확인해 자동변환
-		
-		<property name="serviceInterface" value="me.dec7.user.service.UserService" />
-	</bean>
 	-->
-	
-	<bean id="userServiceImpl" class="me.dec7.user.service.UserServiceImpl">
+	<!--
+		<bean id="userServiceImpl" class="me.dec7.user.service.UserServiceImpl">
+		proxy를 도입했을 때 간접적으로 사용돼야 했던 userServiceImpl을 원복
+	-->
+	<bean id="userService" class="me.dec7.user.service.UserServiceImpl">
 		<property name="userDao" ref="userDao" />
 		<property name="mailSender" ref="mailSender" />
 	</bean>
 	
+
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
 	</bean>
-
 
 </beans>

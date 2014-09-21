@@ -15,55 +15,55 @@
 	
 	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="dataSource" />
-	</bean>
-	
+	</bean>	
 	<bean id="mailSender" class="me.dec7.user.service.DummyMailSender" />
 	
-	<!--
-	<bean id="userService" class="me.dec7.user.service.UserServiceTx">
-		<property name="transactionManager" ref="transactionManager" />
-		<property name="userService" ref="userServiceImpl" />
-	</bean>
-	-->
 	
+	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" />
+	
+	<!-- pointcut 등록
+		
+		타입패턴, 클래스 이름 패턴
+		아래의 방식으로 타입을 적용할 경우 UserServiceImlp, TestUserServiceImpl 클래스 모두 빈으로 선정
+		
+		상속, 구현시 그 타입이 곧 자신의 타입이 되기 때문임
+	-->
+	<bean id="transactionPointcut" class="org.springframework.aop.aspectj.AspectJExpressionPointcut">
+		<property name="expression" value="execution(* *..*ServiceImpl.upgrade*(..))" />
+	</bean>
+		
+
 	<bean id="transactionAdvice" class="me.dec7.user.service.TransactionAdvice">
 		<property name="transactionManager" ref="transactionManager" />
 	</bean>
 	
-	<bean id="transactionPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
-		<property name="mappedName" value="upgrade*" />
-	</bean>
 	
 	<bean id="transactionAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
 		<property name="advice" ref="transactionAdvice" />
 		<property name="pointcut" ref="transactionPointcut" />
 	</bean>
 	
-	<bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean">
-		<property name="target" ref="userServiceImpl" />
-		<property name="interceptorNames">
-			<list>
-				<value>transactionAdvisor</value>
-			</list>
-		</property>
-	</bean>
-	
-	<!-- 
-	<bean id="userService" class="me.dec7.user.service.TxProxyFactoryBean">
-		<property name="target" ref="userServiceImpl" />
-		<property name="transactionManager" ref="transactionManager" />
-		<property name="pattern" value="upgradeLevels" />
-		<property name="serviceInterface" value="me.dec7.user.service.UserService" />
-	</bean>
-	-->
-	
-	<bean id="userServiceImpl" class="me.dec7.user.service.UserServiceImpl">
+	<bean id="userService" class="me.dec7.user.service.UserServiceImpl">
 		<property name="userDao" ref="userDao" />
 		<property name="mailSender" ref="mailSender" />
 	</bean>
-	
+		
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
 	</bean>
+	
+	<!-- 
+		스태틱 멤버 클래스는 $로 지정
+		 - 특정 테스트 클래스에서만 사용되는 클래스는 static member class로 정의하는게 편리
+		 
+		property 정의를 포함해서 userService bean의 설정을 상속받음
+		 - parent attribute를 사용시 다른 bean의 설정 내용을 상속받을 수 있음
+		 	- userService bean의 모든 설정을 그대로 가져와 사용
+		 - TestUserServiceImlp은 UserServiceImpl을 상속받음
+		 
+		testUserService는 userService bean의 설정을 상속한 뒤 클래스만 변경
+		 - DI 위한 property 설정은 userService bean의 prorpery를 상속받으므로 별로도 지정할 필요 없음
+	 -->
+	<bean id="testUserService" class="me.dec7.user.service.UserServiceTest$TestUserServiceImpl" parent="userService" />
 
 </beans>
