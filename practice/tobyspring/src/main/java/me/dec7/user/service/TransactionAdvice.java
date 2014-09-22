@@ -109,6 +109,14 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
  *   - 가져올 때 사용한 DefaultTransactionDefinition 오브젝트
  */
 
+/*
+ * 선언적 트랜잭션
+ *  - AOP를 이용해 코드외부에서 트랜잭션 기능 부여, 속성 지정
+ *  
+ * 프로그램에 의한 트랜잭션
+ *  - TransactionTemplate이나 개별 데이터 기술의 트랜잭션 api를 사용해 직접 코드 안에서 사용하는 방법
+ * 
+ */
 public class TransactionAdvice implements MethodInterceptor {
 	
 	PlatformTransactionManager transactionManager;

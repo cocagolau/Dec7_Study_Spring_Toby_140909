@@ -4,6 +4,8 @@ import java.util.List;
 
 import me.dec7.user.domain.User;
 
+import org.springframework.transaction.annotation.Transactional;
+
 
 /*
  * 트랜잭션 경계설정 일원화
@@ -16,19 +18,34 @@ import me.dec7.user.domain.User;
  * 		- 단순 비지니스 로직 + 단순 DB 입출력이라면 통합해도 되지만,
  * 		  비지니스 로직을 독자적으로 두고 테스트하려면 서비스 계층을 만듦
  * 
+ * 어노테이션은 타킷 클래스가 인터페이스보다 우선
  */
+@Transactional
 public interface UserService {
 	
-	void add(User user);
-	
 	/*
-	 *  추가된 메소드
-	 *  DAO 메소드와 1:1 대응되는 CRUD 메소드지만 add() 처럼 단순 위임 이상의 로직을 가질 수 있음
+	
+	<tx:method name="*" /> 과 같은 설정 효과
+	메소드 레벨 @Transactional이 없으므로 대체 정책ㅇ네 따라 타입레벨에 부여된 default 속성 적용
+	
 	 */
-	User get(String id);
-	List<User> getAll();
+	void add(User user);
 	void deleteAll();
 	void update(User user);
-	
 	void upgradeLevels();
+	
+	
+	/*
+	
+	<tx:method name="get" read-only="true" />
+	
+	메소드 단위로 부여된 트랜잭션 속성
+	같은 속성을 가지더라도 메소드 레벨에 부여될 때는 메소드마다 반복될 수밖에 없음
+	
+	 */
+	@Transactional(readOnly=true)
+	User get(String id);
+	
+	@Transactional(readOnly=true)
+	List<User> getAll();
 }
