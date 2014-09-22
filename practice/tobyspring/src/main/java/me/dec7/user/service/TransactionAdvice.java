@@ -102,6 +102,12 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
  *  	- 보통 singleton 형태의 오브젝트로 존재 
  */
 
+/*
+ *  6.6, 트랜잭션 속성
+ *  
+ *  트랜잭션 추상화 <PlatformTransactionManager>
+ *   - 가져올 때 사용한 DefaultTransactionDefinition 오브젝트
+ */
 
 public class TransactionAdvice implements MethodInterceptor {
 	
@@ -120,24 +126,144 @@ public class TransactionAdvice implements MethodInterceptor {
 	 */
 	@Override
 	public Object invoke(MethodInvocation invocation) throws Throwable {
+		/*
+		 * 트랜잭션 시작?
+		 *  - transactionManager.getTransaction();
+		 *  - 트랜잭션 시작을 가져온다고 하는 이유?
+		 *  	- 트랜잭션 전파 속성이 있기 때문, 따라서 항상 새로운 트랜잭션이 시작하는 것이 아님,
+		 * 
+		 * 트랜잭션 정의
+		 *  - DefaultTransactionDefinition()
+		 *  
+		 * 트랜잭션 경계
+		 * 
+		 * 트랜잭션 종료
+		 * 	- transactionManager.commit(status);
+		 *  - transactionManager.rollback(status);
+		 *  
+		 *  
+		 * 트랜잭션 정의
+		 *  - 더 이상 쪼갤 수 없는 최소 단위 작업 / 기본개념 유효
+		 *  - 모두 같은 방식으로 동작은 안함
+		 *  
+		 * TransactionDefinition interface의 4가지 속성
+		 *  - DefaultTransactionDefinition이 구현함
+		 *  1) transaction propagation (트랜잭션 전파)
+		 *  	- 트랜잭션 경계에서 이미 진행중이 트랜잭션이 존재할 때 혹은 없을 때 어떻게 동작할 결정하는 방식
+		 *  	- A 트랜잭션 아직 끝나지 않은 시점 / B 호출시 B의 코드는 어떤 트랜잭션 안에서 동작해야 하는가?
+		 *  		a) B코드는 A에서 이미 시작한 트랜잭션에 참여
+		 *  		b) B의 트랜잭션은 A와 무관하게 독립적으로 생성
+		 *  
+		 *  	- PROPAGATION_REQUIRED
+		 *  		- 진행 중인 트랜잭션이 없으면 새로 생성
+		 *  		- 진행 중인 트랜잭션이 존재시 이에 참여
+		 *  		- A, B, A->B, B->A
+		 *  		- DefaultTransactionDefinition의 트랜잭션 전파 속성
+		 *  
+		 *  	- PROPAGATION_REQUIRES_NEW
+		 *  		- 항상 새로운 트랜잭션 시작
+		 *  		- 독립적인 트랜잭션이 보장돼야 하는 코드 적용 가능
+		 *  
+		 *  	- PROPAGATION_NOT_SUPPORTED
+		 *  		- 트랜잭션 없이 동작하도록 할 수 있음
+		 *  		- 진행 중인 트랜잭션이 있어도 무시
+		 *  		- 이유
+		 *  			1) 트랜잭션 경계설정은 보통 AOP를 이용해 한 번에 많은 메소드를 동시 적용
+		 *  			   그 중 특별한 메소드만 트랜잭션 적용에서 제외하기 위해
+		 *
+		 *  2) Isolation Level (격리 수준)
+		 *  	- 서버환경에서 여러 개의 트랜잭션이 동시에 진행될 수 있고, 동시에 진행하며 문제 없도록 제어
+		 *  	- 가능하다면 모든 트랜잭션이 순차적으로 진행되어 다른 트랜잭션의 작업에 독립적인 것이 좋겠지만
+		 *  	  성능상의 불이익이 있음
+		 *  
+		 *  	- ISOLATION_DEFAULT
+		 *  		- datasource에 설정된 default 격리수준을 그대로 유진
+		 *  		- DefaultTransactionDefinition의 격리수준
+		 *  
+		 *  3) timeout (제한시간)
+		 *  	- DefaultTransactionDefinition
+		 *  		- 제한시간 없음
+		 *  	- 트랜잭션을 직접 시작할 수 있는 속성 (PROPAGATION_REQUIRED or PROPAGATION_REQUIRES_NEW)
+		 *  	  과 함께해야 의미 있음
+		 *  
+		 *  4) read only (읽기전용)
+		 *  	- 트랜잭션 내에서 데이터를 조작하는 시도를 막음
+		 *  	- 떼이터 액세스 기술에 따라 성능 향상
+		 */
+		
+		/*  
+		 * - 속성 설정
+		 *  	- 트랜잭션 경계설정 코드를 가진 TransactionAdvice에서 TransactionDefinition interface의 구현체를
+		 *  	  DI 받아 사용하면 됨, 하지만 이 방법은 모든 트랜잭션의 속성이 바뀐다는 문제가 있음
+		 *  	- advice 기능을 확장해 해결
+		 *  		- 메소드 이름 패턴에 따라 다른 트랜잭션 정의가 적용되도록 함
+		 *  
+		 *  
+		 * TransactionInterceptor
+		 *  - 트랜잭션 경계설정 advice로 사용할 수 있음
+		 *  - 동작방식은 TransactionAdvice와 동일, 트랜잭션 정ㅇ늬를 메소드 이름패턴에서 다르게 지정하도록 추가지원
+		 *  - properties type
+		 *  	- PlatformTransactionManager
+		 *  	- Properties
+		 *  		- 이름은 transactionAttributes, 트랜잭션 속성을 정의한 property
+		 *  		- TransctionAttribute interface
+		 *  			- TransactionDefinition (4가지 속성) + rollbackOn()
+		 *  			- rollbackOn() 메소드	
+		 *  				- 어떤 예외가 발생시 롤백여부를 결정하는 메소드
+		 *  			- 트랜잭션 부가기능의 동작을 모두 제어 가능
+		 * 
+		 * TransactionAdvice
+		 *  - RuntimeException이 발생하는 경우만 트랜잭션을 롤백시킴
+		 *  - 모든 종류의 예외에 대해 트랜잭션을 롤백시켜서는 안됨
+		 *  	- 비지니스 로직상 예외 경우를 나타내기 위해 타깃 오브젝트가 체크 예외를 던지는 경우엔
+		 *  	  DB 트랜잭션은 커밋 시켜야 하기 때문
+		 *  
+		 *  	- TransactionInterceptor는 두가지 종류의 예외 처리방식
+		 *  		1) runtime 예외
+		 *  			- 트랜잭션 롤백
+		 *  		2) 체크 예외
+		 *  			- 예외 상황으로 해석하지 않고, 비지니스 로직에 따른 의미가 있는 리턴 방식의 한 가지로 인식
+		 *  			- 트랜잭션 커밋
+		 *  			- 스프링 예외처리 원칙
+		 *  				- 비지니스적인 의미가 있는 예외상황에서 체크예외 사용	
+		 *  				- 그 외의 모든 복구 불가능한 순수한 예외의 경우 런타임예외로 포장해 전달하는 방식을 따른다고 가정
+		 *  		- 위 기본원칙을 따르지 않을 수 있음
+		 *  			- rollbackOn() 속성으로 기본 원칙과 다른 예외 처리 가능
+		 *  			- 특정 체크 예외의 경우 트랜잭션 롤백 / 특정 런타임 예외시 트랜잭션 커밋 가능
+		 *  
+		 * 메소드 이름 패턴 사용
+		 *  - Properties type의 transactionAttributes property는 메소드 패턴과 트랜잭션 속성을 키/값으로 갖는 컬랙션
+			
+				PROPAGATION_NAME, ISOLATION_NAME, readOnly, timeout_NNNN, -Exception1, +Exception2
+				
+				PROPAGATION_NAME
+					- 트랜잭션 전파방식, 필수 항목
+				ISOLATION_NAME
+					- 격리수준, 생략 가능, 생략시 디폴트 격리
+				readOnly
+					- 읽기전용항목, 생략 가능, 디폴트는 읽기전용 아님
+				timeout_NNNN
+					- 제한시간, 초단위 시간을 붙임, 생략가능
+				-Exception1
+					- 체크예외중, 롤백대상으로 추가할 것, 한개이상 가능
+				+Exception2
+					- 런타임예외나 롤백시키지 않을 예외들, 한개이상 가능
+			
+		 * 주의사항
+		 *  - Proxy 방식 AOP는 같은 target 오브젝트 내의 메소드를 호출할 때는 적용되지 않음
+		 *  	- 타깃 오브젝트 내의 메소드 호출시 전파속성이 REQUIRES_NEW라 했더라도
+		 *  	  타깃 오브젝트의 메소드는 이전 트랜잭션에 단순 참여할 뿐
+		 *  - 클라이언트로부터 호출이 일어날 때만 가능
+		 *  	- 클라이언트를 인터페이스를 통해 타킷 오브젝트를 사용하는 다른 오브젝트
+		 */
 		TransactionStatus status = this.transactionManager.getTransaction(new DefaultTransactionDefinition());
 		
 		try {
-			/*
-			 * callback을 호출해서 target의 메소드를 실행,
-			 * target 메소드 호출 전후로 필요한 부가기능을 넣을 수 있음
-			 * 
-			 * 경우에 따라, target이 아예 호출되지 않게하거나 재시도를 위한 반복적 호출도 가능
-			 */
 			Object ret = invocation.proceed();
 			
 			this.transactionManager.commit(status);
 			return ret;
 			
-		/*
-		 * JDK dynamic proxy가 제공하는 method와 다르게 
-		 * spring의 MethodInvocation을 통한 target 호출은 예외가 포장되지 않고 target에서 보낸 그대로 전달
-		 */
 		} catch (RuntimeException e) {
 			this.transactionManager.rollback(status);
 			throw e;

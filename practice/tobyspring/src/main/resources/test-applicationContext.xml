@@ -3,8 +3,10 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
-		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd">
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
 	
 	<bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
 		<property name="driverClass" value="com.mysql.jdbc.Driver" />
@@ -23,35 +25,19 @@
 	
 	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" />
 	
-	<!-- pointcut 등록
-		
-		타입패턴, 클래스 이름 패턴
-		아래의 방식으로 타입을 적용할 경우 UserServiceImlp, TestUserServiceImpl 클래스 모두 빈으로 선정
-		
-		상속, 구현시 그 타입이 곧 자신의 타입이 되기 때문임
-	-->
-	
 
-	<bean id="transactionAdvice" class="me.dec7.user.service.TransactionAdvice">
-		<property name="transactionManager" ref="transactionManager" />
-	</bean>
 	<aop:config>
-		<aop:advisor advice-ref="transactionAdvice" pointcut="execution(* *..*ServiceImpl.upgrade*(..))" />
+		<aop:advisor advice-ref="transactionAdvice" pointcut="bean(*Service)" />
 	</aop:config>
 	
-	<!-- 
-		AOP 설정을 담는 부모태그
-		필요에 따라 AspectJAdvisorAutoProxyCreator를 bean으로 등록
-	 -->
-	<!--	
-	<bean id="transactionAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
-		<property name="advice" ref="transactionAdvice" />
-		<property name="pointcut" ref="transactionPointcut" />
-	</bean>
-	<bean id="transactionPointcut" class="org.springframework.aop.aspectj.AspectJExpressionPointcut">
-		<property name="expression" value="execution(* *..*ServiceImpl.upgrade*(..))" />
-	</bean>
-	-->
+	<tx:advice id="transactionAdvice">
+		<tx:attributes>
+			<!-- PROPAGATION이 REQUIRED는 생략가능 -->
+			<tx:method name="get*" read-only="true" />
+			<tx:method name="*" />
+		</tx:attributes>
+	</tx:advice>
+	
 	
 	<bean id="userService" class="me.dec7.user.service.UserServiceImpl">
 		<property name="userDao" ref="userDao" />
@@ -61,6 +47,8 @@
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
 	</bean>
+	
+	
 	
 	<!-- 
 		스태틱 멤버 클래스는 $로 지정

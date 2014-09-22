@@ -1,6 +1,7 @@
 package me.dec7.user.service;
 
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
@@ -19,9 +20,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.dao.TransientDataAccessResourceException;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.test.annotation.DirtiesContext;
@@ -227,11 +228,12 @@ public class UserServiceTest {
 	
 	/*
 	 * 자동 프록시 생성기를 통해 testUserService가 알맞는 bean에 적용되는지 확인
-	 */
+	 *
 	@Test
 	public void advisorAutoProxyCreator() {
 		assertThat(testUserService, is(instanceOf(java.lang.reflect.Proxy.class)));
 	}
+	*/
 	
 	@Test(expected=TestUserServiceException.class)
 	/*
@@ -266,6 +268,18 @@ public class UserServiceTest {
 		checkLevelUpgraded(users.get(1), false);
 	}
 	
+	// 읽기전용 속성 테스트
+	@Test(expected=TransientDataAccessResourceException.class)
+	/*
+	 * TransientDataAccessResourceException
+	 *  - 일시적인 예외상황을 만났을 때 발생하는 예외
+	 *  - 재시도시 성공할 가능성이 있다는 의미로 정상적으로 처리되었어야 하나 일시적 제약조건으로 예외 발생시켰다는 의미 
+	 */
+	public void readOnlyTransactionAttribute() {
+		// 예외 발생해야함
+		testUserService.getAll();
+	}
+	
 	/*
 	 * 두가지 문제점 
 	 *  1. TestUserService는 UserServiceTest 클래스 내부에 정의된 static 클래스?
@@ -280,6 +294,19 @@ public class UserServiceTest {
 			}
 			
 			super.upgradeLevel(user);
+		}
+		
+		/*
+		 * read-only시 쓰기가 불가능한지 테스트 위해
+		 * 읽기 전영 트랜잭션 대상인 get으로 시작하는 메소드를 오버라이드
+		 */
+		public List<User> getAll() {
+			for (User user : super.getAll()) {
+				// 강제로 쓰기 시도, 읽기전용 속성으로 인한 예외 발생해야함
+				super.update(user);
+			}
+			
+			return null;
 		}
 	}
 	

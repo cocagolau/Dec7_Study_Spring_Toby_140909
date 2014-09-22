@@ -118,7 +118,7 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
 
  */
 
-public class UserServiceTx implements UserService {
+public abstract class UserServiceTx implements UserService {
 	
 	// 타킷 오브젝트
 	UserService userService;
