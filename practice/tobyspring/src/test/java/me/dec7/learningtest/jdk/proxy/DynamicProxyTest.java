@@ -1,10 +1,14 @@
-package me.dec7.learningtest.jdk;
+package me.dec7.learningtest.jdk.proxy;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 
 import java.lang.reflect.Proxy;
+
+import me.dec7.learningtest.jdk.proxy.Hello;
+import me.dec7.learningtest.jdk.proxy.HelloTarget;
+import me.dec7.learningtest.jdk.proxy.UppercaseHandler;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;

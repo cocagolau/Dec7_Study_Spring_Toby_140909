@@ -1,4 +1,4 @@
-package me.dec7.learningtest.jdk;
+package me.dec7.learningtest.jdk.proxy;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;

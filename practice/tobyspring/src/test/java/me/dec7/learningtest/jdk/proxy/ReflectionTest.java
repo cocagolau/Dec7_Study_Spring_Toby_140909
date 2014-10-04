@@ -1,4 +1,4 @@
-package me.dec7.learningtest.jdk;
+package me.dec7.learningtest.jdk.proxy;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;

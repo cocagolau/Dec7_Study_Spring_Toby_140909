@@ -8,14 +8,42 @@ import javax.sql.DataSource;
 
 import me.dec7.user.domain.Level;
 import me.dec7.user.domain.User;
+import me.dec7.user.sqlservice.SqlService;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
+
+/*
+ * SQL과 DAO 분리
+ *  - 데이터 엑세스 로직이 바뀌지 않더라도 SQL 문장이 바뀔 수 있음
+ * 		- 테이블/필드이름이 바뀌거나,테이블 분리, sql에 부가적인 기능 추가
+ * 
+ * 1. XML설정을 통한 분리
+ *  -sql을 xml파일로 분리 후 bean에 값을 주입
+ *  1) 개별 SQL property 방식
+ *  	- setter method 설정
+ *   	- spring 설정파일에 sql을 DI
+ *    
+ *  2) SQL 맵 프로퍼티 방식
+ *  	- SQL을 하나의 컬렉션에 담아두는 방법
+ *  		- sql이 많아지면 DI하기 어려움
+ *  		- key를 이용해 sql을 가져올 수 있음
+ *  
+ */
 public class UserDaoJdbc implements UserDao {
 	private JdbcTemplate jdbcTemplate;
+	
+	/*
+	private String sqlAdd;
+	map 방식으로 변경
+	private Map<String, String> sqlMap;
+	*/
+	private SqlService sqlService;
+	
 	private RowMapper<User> userMapper = new RowMapper<User> () {
+		
 
 		@Override
 		public User mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -32,8 +60,21 @@ public class UserDaoJdbc implements UserDao {
 		}
 		
 	};
-
 	
+	
+
+	/*
+	public void setSqlAdd(String sqlAdd) {
+		this.sqlAdd = sqlAdd;
+	}
+	public void setSqlMap(Map<String, String> sqlMap) {
+		this.sqlMap = sqlMap;
+	}
+	*/
+	public void setSqlService(SqlService sqlService) {
+		this.sqlService = sqlService;
+	}
+
 	public void setDataSource(DataSource dataSource) {
 		this.jdbcTemplate = new JdbcTemplate(dataSource);
 	}
@@ -43,7 +84,11 @@ public class UserDaoJdbc implements UserDao {
 	 */
 	@Override
 	public void deleteAll() {
-		this.jdbcTemplate.update("delete from users");
+		this.jdbcTemplate.update(
+				//this.sqlMap.get("deleteAll")
+				//"delete from users"
+				this.sqlService.getSql("userDeleteAll")
+				);
 	}
 	
 	/* (non-Javadoc)
@@ -53,20 +98,15 @@ public class UserDaoJdbc implements UserDao {
 	public void add(User user) throws DuplicateKeyException {
 		try {
 			this.jdbcTemplate.update(
-					"insert into users(id, name, password, email, level, login, recommend) " +
-					"values(?,?,?,?,?,?,?)",
+					// this.sqlAdd,
+					//this.sqlMap.get("add"),
+					//"insert into users(id, name, password, email, level, login, recommend) values(?,?,?,?,?,?,?)",
+					this.sqlService.getSql("userAdd"),
 					user.getId(),
 					user.getName(),
 					user.getPassword(),
 					user.getEmail(),
 					
-					/*
-					 * Level 타입은 enum 오브젝트이므로 DB에 들어갈 수 없음
-					 *  - DB에 저장될 수 있도록 intValue()메소드를 사용하여 전환
-					 * 
-					 * 반대로 DB에서 가져온 값은 int타입이므로 
-					 * valueOf()를 사용하여 Level타입의 enum오브젝트로 변환
-					 */
 					user.getLevel().intValue(),
 					user.getLogin(),
 					user.getRecommend()
@@ -87,7 +127,9 @@ public class UserDaoJdbc implements UserDao {
 	public User get(String id) {
 		
 		return this.jdbcTemplate.queryForObject(
-				"select * from users where id = ?",
+				//this.sqlMap.get("get"),
+				//"select * from users where id = ?",
+				this.sqlService.getSql("userGet"),
 				new Object[] {id},
 				this.userMapper
 		);
@@ -100,7 +142,11 @@ public class UserDaoJdbc implements UserDao {
 	@Override
 	public int getCount() {
 		
-		return this.jdbcTemplate.queryForInt("select count(*) from users");
+		return this.jdbcTemplate.queryForInt(
+				//this.sqlMap.get("getCount")
+				//"select count(*) from users"
+				this.sqlService.getSql("userGetCount")
+				);
 	}
 
 	/* (non-Javadoc)
@@ -110,14 +156,18 @@ public class UserDaoJdbc implements UserDao {
 	public List<User> getAll() {
 	
 		return this.jdbcTemplate.query(
-				"select * from users order by id",
+				//this.sqlMap.get("getAll"),
+				//"select * from users order by id",
+				this.sqlService.getSql("userGetAll"),
 				this.userMapper);
 	}
 
 	@Override
 	public void update(User user) {		
 		this.jdbcTemplate.update(
-				"update users set name=?, password=?, level=?, login=?, recommend=? where id=?",
+				//this.sqlMap.get("update"),
+				//"update users set name=?, password=?, level=?, login=?, recommend=? where id=?",
+				this.sqlService.getSql("userUpdate"),
 				user.getName(), user.getPassword(), user.getLevel().intValue(), user.getLogin(), user.getRecommend(), user.getId());	
 	}
 	

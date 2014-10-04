@@ -4,7 +4,9 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:aop="http://www.springframework.org/schema/aop"
 	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
 		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd
 		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
 	
@@ -22,10 +24,16 @@
 	</bean>	
 	<bean id="mailSender" class="me.dec7.user.service.DummyMailSender" />
 	
+	<tx:annotation-driven />
+	<context:annotation-config />
 	
+	<!-- 
+		http://redutan.blogspot.kr/2014/05/spring-3-defaultadvisorautoproxycreator.html
+		자기참조 빈 설정과 DefaultAdvisorAutoProxyCreator가 동시 존재시 아래처럼
+		java.lang.IllegalStateException: Failed to load ApplicationContext 예외 발생
 	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" />
+	 -->
 	
-
 	<aop:config>
 		<aop:advisor advice-ref="transactionAdvice" pointcut="bean(*Service)" />
 	</aop:config>
@@ -43,25 +51,18 @@
 		<property name="userDao" ref="userDao" />
 		<property name="mailSender" ref="mailSender" />
 	</bean>
-		
+	
+	<bean id="sqlService" class="me.dec7.user.sqlservice.DefaultSqlService" />
+	
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
+		<property name="sqlService" ref="sqlService" />
 	</bean>
 	
 	
 	
-	<!-- 
-		스태틱 멤버 클래스는 $로 지정
-		 - 특정 테스트 클래스에서만 사용되는 클래스는 static member class로 정의하는게 편리
-		 
-		property 정의를 포함해서 userService bean의 설정을 상속받음
-		 - parent attribute를 사용시 다른 bean의 설정 내용을 상속받을 수 있음
-		 	- userService bean의 모든 설정을 그대로 가져와 사용
-		 - TestUserServiceImlp은 UserServiceImpl을 상속받음
-		 
-		testUserService는 userService bean의 설정을 상속한 뒤 클래스만 변경
-		 - DI 위한 property 설정은 userService bean의 prorpery를 상속받으므로 별로도 지정할 필요 없음
-	 -->
+	
+	
 	<bean id="testUserService" class="me.dec7.user.service.UserServiceTest$TestUserServiceImpl" parent="userService" />
 
 </beans>
