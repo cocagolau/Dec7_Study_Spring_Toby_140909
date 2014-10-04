@@ -323,8 +323,8 @@ public class UserServiceTest {
 		checkLevelUpgraded(users.get(1), false);
 	}
 	
-	//@Test(expected=TransientDataAccessResourceException.class)
-	@Test
+	@Test(expected=TransientDataAccessResourceException.class)
+//	@Test
 	public void readOnlyTransactionAttribute() {
 		// 예외 발생해야함
 		testUserService.getAll();
