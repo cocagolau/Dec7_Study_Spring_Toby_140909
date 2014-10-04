@@ -11,7 +11,7 @@ import javax.annotation.PostConstruct;
  *  	- 외부에서 DI 받지 않는 경우 기본적으로 자동 적용되는 의존관계
  * 
  */
-public class BeanSqlService implements SqlService {
+public class BaseSqlService implements SqlService {
 	
 	/*
 	 * BaseSqlService는 상속을 통해 확장해서 사용하기에 적합

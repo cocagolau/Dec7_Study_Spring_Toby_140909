@@ -144,7 +144,7 @@
 		 - JaxbXmlSqlReader의 sqlmapFile 프로퍼티가 비어있으므로
 		
 		해결책
-		 1. DefaultSqlService의 프로퍼티에
+		 1. JaxbXmlSqlReader에 의해 기본값을 정의함
 	-->
 	<bean id="sqlService" class="me.dec7.user.sqlservice.DefaultSqlService" />
 	

@@ -12,7 +12,12 @@ import me.dec7.user.sqlservice.jaxb.Sqlmap;
 
 public class JaxbXmlSqlReader implements SqlReader {
 	
-	private String sqlMapFile;
+	/*
+	 * 굳이 상수로 만들 필요는 없음
+	 * 하지만, 의도가 코드에 분명히 드러남
+	 */
+	private static final String DEFAULT_SQLMAP_FILE = "sqlmap.xml";
+	private String sqlMapFile = DEFAULT_SQLMAP_FILE;
 	
 	public void setSqlMapFile(String sqlMapFile) {
 		this.sqlMapFile = sqlMapFile;
