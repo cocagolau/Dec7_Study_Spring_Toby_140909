@@ -3,6 +3,7 @@ package me.dec7.user.dao;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
@@ -33,17 +34,16 @@ import org.springframework.jdbc.core.RowMapper;
  *  
  */
 public class UserDaoJdbc implements UserDao {
-	private JdbcTemplate jdbcTemplate;
 	
 	/*
+	 * sql이 많아지면 계속 DI해야함.
+	 * map을 이용한 방법으로 변경
 	private String sqlAdd;
-	map 방식으로 변경
+	 */
 	private Map<String, String> sqlMap;
-	*/
 	private SqlService sqlService;
-	
+	private JdbcTemplate jdbcTemplate;
 	private RowMapper<User> userMapper = new RowMapper<User> () {
-		
 
 		@Override
 		public User mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -61,6 +61,14 @@ public class UserDaoJdbc implements UserDao {
 		
 	};
 	
+	/*
+	public void setSqlAdd(String sqlAdd) {
+		this.sqlAdd = sqlAdd;
+	}
+	 */
+	public void setSqlMap(Map<String, String> sqlMap) {
+		this.sqlMap = sqlMap;
+	}
 	
 
 	/*
@@ -71,6 +79,7 @@ public class UserDaoJdbc implements UserDao {
 		this.sqlMap = sqlMap;
 	}
 	*/
+	// SqlService를 DI받을 수 있도록 setter method 정의
 	public void setSqlService(SqlService sqlService) {
 		this.sqlService = sqlService;
 	}
@@ -85,8 +94,12 @@ public class UserDaoJdbc implements UserDao {
 	@Override
 	public void deleteAll() {
 		this.jdbcTemplate.update(
-				//this.sqlMap.get("deleteAll")
 				//"delete from users"
+				//this.sqlMap.get("deleteAll")
+				/*
+				 * sqlService는 모든 DAO의 Service bean에서 사용할 것이므로
+				 * dao별로 이름이 중복되지 않도록 해야함
+				 */
 				this.sqlService.getSql("userDeleteAll")
 				);
 	}
@@ -98,9 +111,9 @@ public class UserDaoJdbc implements UserDao {
 	public void add(User user) throws DuplicateKeyException {
 		try {
 			this.jdbcTemplate.update(
-					// this.sqlAdd,
-					//this.sqlMap.get("add"),
 					//"insert into users(id, name, password, email, level, login, recommend) values(?,?,?,?,?,?,?)",
+					//this.sqlAdd,
+					//this.sqlMap.get("add"),
 					this.sqlService.getSql("userAdd"),
 					user.getId(),
 					user.getName(),
@@ -127,8 +140,8 @@ public class UserDaoJdbc implements UserDao {
 	public User get(String id) {
 		
 		return this.jdbcTemplate.queryForObject(
-				//this.sqlMap.get("get"),
 				//"select * from users where id = ?",
+				//this.sqlMap.get("get"),
 				this.sqlService.getSql("userGet"),
 				new Object[] {id},
 				this.userMapper
@@ -143,8 +156,8 @@ public class UserDaoJdbc implements UserDao {
 	public int getCount() {
 		
 		return this.jdbcTemplate.queryForInt(
-				//this.sqlMap.get("getCount")
 				//"select count(*) from users"
+				//this.sqlMap.get("getCount")
 				this.sqlService.getSql("userGetCount")
 				);
 	}
@@ -156,8 +169,8 @@ public class UserDaoJdbc implements UserDao {
 	public List<User> getAll() {
 	
 		return this.jdbcTemplate.query(
-				//this.sqlMap.get("getAll"),
 				//"select * from users order by id",
+				//this.sqlMap.get("getAll"),
 				this.sqlService.getSql("userGetAll"),
 				this.userMapper);
 	}
@@ -165,8 +178,8 @@ public class UserDaoJdbc implements UserDao {
 	@Override
 	public void update(User user) {		
 		this.jdbcTemplate.update(
-				//this.sqlMap.get("update"),
 				//"update users set name=?, password=?, level=?, login=?, recommend=? where id=?",
+				//this.sqlMap.get("update"),
 				this.sqlService.getSql("userUpdate"),
 				user.getName(), user.getPassword(), user.getLevel().intValue(), user.getLogin(), user.getRecommend(), user.getId());	
 	}

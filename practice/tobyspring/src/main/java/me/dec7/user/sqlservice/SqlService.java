@@ -12,6 +12,14 @@ package me.dec7.user.sqlservice;
  *  	- XML 문서정보를 거의 동일한 구조의 오브젝트로 직접 맵핑해줌
  *  	- XML 문서의 구조를 정의한 스키마를 이용해 매핑할 오브젝트 클래스까지 자동으로 만들어주는 컴파일러 제공
  */
+/*
+ * sql 제공기능을 분리
+ * 
+ * SQL 서비스의 인터페이스를 설계
+ *  - client인 Dao를 SQL 서비스의 구현에서 독립적으로 만들도록 인터페이스 사용 --> DI주입
+ *  - client가 사용할 SqlService interface 기능
+ *  	- sql에 대한 key 전달 --> sql 제공
+ */
 
 public interface SqlService {
 	
