@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+	
+	<!-- 
+		Jaxb2Mashaller
+			- JAXB를 이용하도록 만들어진 Unmarshaller 구현 클래스
+			- Jaxb2Marshaller는 Unmarshaller, Marshaller interface 모두 구현함
+			- Jaxb2Marshaller 클래스를 bean으로 등록 -> 바인딩 클래스의 패키지 이름만 지정
+			
+		unmarshaller bean
+		 - Unmarshaller type
+		 - unmarshaller를 생성하는 일은 Unmarshaller의 unmarshall() 메소드로 처리됨				 
+	-->
+	<!-- Jaxb 기술 -->
+	<!--
+	<bean id="unmarshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+		<property name="contextPath" value="me.dec7.user.sqlservice.jaxb" />
+	</bean>
+	-->
+	
+	<!-- Castor 기술 -->
+	<bean id="unmarshaller" class="org.springframework.oxm.castor.CastorMarshaller">
+		<property name="mappingLocation" value="./mapping.xml" />
+	</bean>
+	
+	
+
+</beans>

@@ -26,14 +26,6 @@
 
 	<tx:annotation-driven />
 	
-	<!-- 
-		코드의 어노테이션을 이용해서 부가적인 bean 설정 혹은 초기화 작업을 해주는 후 처리기 등록
-		
-		빈 후 처리기는 특별한 어노테이션을 제공
-		@PostConstruct
-			- java.lang.annotation 패키지에 포함된 공통 어노테이션
-			- bean 오브젝트의 초기화 메소드를 지정 
-	-->
 	<context:annotation-config />
 	
 	<aop:config>
@@ -56,97 +48,16 @@
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
 		<property name="sqlService" ref="sqlService" />
-		<!-- 설정파일에 넣은 SQL 문장 -->
-		<!--
-		map 방식으로 변경 
-		<property name="sqlAdd" value="insert into users(id, name, password, email, level, login, recommend) values(?,?,?,?,?,?,?)" />
-		-->
-		<!-- 
-			관리의 어려움
-			 - 코드에서 분리할 수 있지만 코드가 더러워지고 관리가 어려워짐
-			 - 설정방법을 spring bean 설정파일에 저장할 필요 없음
-			 
-			SQL Service interface
-			 - DAO가 사용할 SQL 제공기능을 분리
-			 - sql의 키 전달시 sql 반환
-			 	- 어떻게 가져오는지 어디에 저장되어있는지는 DAO의 관심사항이 아님
-			
-		 -->
-		<!-- sqlMap 이동 
-		<property name="sqlMap">
-			<map>
-				<entry key="add" value="insert into users(id, name, password, email, level, login, recommend) values(?,?,?,?,?,?,?)" />
-				<entry key="get" value="select * from users where id = ?"></entry>
-				<entry key="getAll" value="select * from users order by id"></entry>
-				<entry key="deleteAll" value="delete from users"></entry>
-				<entry key="getCount" value="select count(*) from users"></entry>
-				<entry key="update" value="update users set name=?, password=?, level=?, login=?, recommend=? where id=?"></entry>
-			</map>
-		</property>
-		-->
 	</bean>
 	
-	<!-- sqlService bean 등록 -->
-	<!-- 
-	<bean id="sqlService" class="me.dec7.user.sqlservice.SimpleSqlService">
-		<property name="sqlMap">
-			<map>
-				<entry key="add" value="insert into users(id, name, password, email, level, login, recommend) values(?,?,?,?,?,?,?)" />
-				<entry key="get" value="select * from users where id = ?"></entry>
-				<entry key="getAll" value="select * from users order by id"></entry>
-				<entry key="deleteAll" value="delete from users"></entry>
-				<entry key="getCount" value="select count(*) from users"></entry>
-				<entry key="update" value="update users set name=?, password=?, level=?, login=?, recommend=? where id=?"></entry>
-			</map>
-		</property>
-	</bean>
-	 -->
-	 
-	<!-- 
-	<bean id="sqlService" class="me.dec7.user.sqlservice.XmlSqlService">
-		<property name="sqlMapFile" value="sqlmap.xml" />
-	</bean>
-	-->
-	<!-- 
-		자기참조 빈 설정
-		 - bean은 sqlService 하나만 선언했고, 실제 빈 오브젝트 한개만 만들어짐
-		 - 자기 참조 빈은 흔한 방법 아님
-		 	- 책임이 다르면 클래스를 구분하고 각기 다른 오브젝트로 만드는 것이 자연스러움
-		 	- 다만, 이것을 하는 것은
-		 	  책임과 관심사가 복잡하게 얽혀있어 확장 힘들고 변경이 취약한 구조의 클래스를 유연한 구조로 만들려고 할 때 가장 처음 시도하는 방법
-	-->
-	<!--  
-	<bean id="sqlService" class="me.dec7.user.sqlservice.XmlSqlService">
-		<!-- property는 자기자신을 참조할 수 있음 
-		<property name="sqlReader" ref="sqlService" />
-		<property name="sqlRegistry" ref="sqlService" />
-		<property name="sqlMapFile" value="sqlmap.xml" />
-	</bean>
-	-->
-	
-	<!-- 
-	<bean id="sqlService" class="me.dec7.user.sqlservice.BeanSqlService">
-		<property name="sqlReader" ref="sqlService" />
-		<property name="sqlRegistry" ref="sqlService" />
+	<!-- <bean id="sqlService" class="me.dec7.user.sqlservice.DefaultSqlService" /> -->
+	<bean id="sqlService" class="me.dec7.user.sqlservice.OxmSqlService">
+		<property name="unmarshaller" ref="unmarshaller" />
 	</bean>
 	
-	<bean id="sqlReader" class="me.dec7.user.sqlservice.JaxbXmlSqlReader">
-		<property name="sqlMapFile" value="sqlmap.xml" />	
+	<bean id="unmarshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+		<property name="contextPath" value="me.dec7.user.sqlservice.jaxb" />
 	</bean>
-	
-	<bean id="sqlRegistry" class="me.dec7.user.sqlservice.HashMapSqlRegistry" />
-	
-	default bean으로 설정시
-	-->
-	
-	<!-- 
-		이렇게 실행하면 실패.. 왜?
-		 - JaxbXmlSqlReader의 sqlmapFile 프로퍼티가 비어있으므로
-		
-		해결책
-		 1. JaxbXmlSqlReader에 의해 기본값을 정의함
-	-->
-	<bean id="sqlService" class="me.dec7.user.sqlservice.DefaultSqlService" />
 	
 	
 

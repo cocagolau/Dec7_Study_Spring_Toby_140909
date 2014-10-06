@@ -27,13 +27,6 @@
 	<tx:annotation-driven />
 	<context:annotation-config />
 	
-	<!-- 
-		http://redutan.blogspot.kr/2014/05/spring-3-defaultadvisorautoproxycreator.html
-		자기참조 빈 설정과 DefaultAdvisorAutoProxyCreator가 동시 존재시 아래처럼
-		java.lang.IllegalStateException: Failed to load ApplicationContext 예외 발생
-	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" />
-	 -->
-	
 	<aop:config>
 		<aop:advisor advice-ref="transactionAdvice" pointcut="bean(*Service)" />
 	</aop:config>
@@ -46,7 +39,13 @@
 		</tx:attributes>
 	</tx:advice>
 	
-	<bean id="sqlService" class="me.dec7.user.sqlservice.DefaultSqlService" />
+	<bean id="sqlService" class="me.dec7.user.sqlservice.OxmSqlService">
+		<property name="unmarshaller" ref="unmarshaller" />
+	</bean>
+	
+	<bean id="unmarshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+		<property name="contextPath" value="me.dec7.user.sqlservice.jaxb" />
+	</bean>
 	
 	<bean id="userDao" class="me.dec7.user.dao.UserDaoJdbc">
 		<property name="dataSource" ref="dataSource" />
