@@ -10,6 +10,8 @@ import me.dec7.user.dao.UserDao;
 import me.dec7.user.sqlservice.jaxb.SqlType;
 import me.dec7.user.sqlservice.jaxb.Sqlmap;
 
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.oxm.Unmarshaller;
 import org.springframework.oxm.XmlMappingException;
 
@@ -60,21 +62,41 @@ public class OxmSqlService implements SqlService {
 		
 	};
 	
+	// SqlService의 실제 작업을 위임할 대상인 BaseSqlService를 인스턴스 변수로 정의
+	private final BaseSqlService baseSqlService = new BaseSqlService(); 
 	private SqlRegistry sqlRegistry = new HashMapSqlRegistry();
+	
+	
 	public void setSqlRegistry(SqlRegistry sqlRegistry) {
 		this.sqlRegistry = sqlRegistry;
 	}
 	
+	//-----------------------------------------------------------
+	/*
+	 * loadSql, getSql은 BaseSqlService와 동일
+	 * OxmSqlService에서 동일한 부분을 BaseSqlService로 작업을 위임하자
+	 */
 	@PostConstruct
 	public void loadSql() {
-		this.oxmSqlReader.read(this.sqlRegistry);
+		//this.oxmSqlReader.read(this.sqlRegistry);
+		// 실제 작업을 위임할 BaseSqlService로 주입
+		this.baseSqlService.setSqlReader(this.oxmSqlReader);
+		this.baseSqlService.setSqlRegistry(this.sqlRegistry);
+		
+		// SQL을 등록하는 초기화 작업을 수행
+		this.baseSqlService.loadSql();
 	}
 
 	@Override
 	public String getSql(String key) throws SqlRetrievalFailureException {
+		/*
 		try { return this.sqlRegistry.findSql(key); }
 		catch (SqlNotFoundException e) { throw new SqlRetrievalFailureException(e); }
+		*/
+		return this.baseSqlService.getSql(key);
 	}
+	
+	//-----------------------------------------------------------
 	
 	/*
 	 * setUnmarshaller / setSqlMapFile
@@ -85,8 +107,13 @@ public class OxmSqlService implements SqlService {
 		this.oxmSqlReader.setUnmarshaller(unmarshaller);
 	}
 	
+	/*
 	public void setSqlMapFile(String sqlMapFile) {
 		this.oxmSqlReader.setSqlMapFile(sqlMapFile);
+	}
+	Resouce를 사용해 XML 파일 가져오기 */
+	public void setSqlMap(Resource sqlMap) {
+		this.oxmSqlReader.setSqlMap(sqlMap);
 	}
 	
 	
@@ -103,8 +130,22 @@ public class OxmSqlService implements SqlService {
 		private Unmarshaller unmarshaller;
 		private String sqlMapFile = OxmSqlReader.DEFAULT_SQLMAP_FILE;
 		
+		/* Resource 구현 클래스인 ClassPathResource를 사용
+		 * 
+		 * Resouce 오브젝트
+		 *  - 실제 리소트가 아님
+		 *  - 단지 리소스에 접근할 수 있는 추상화된 핸들러일 뿐
+		 *  - 따라서, 리소스 오브젝트가 만들어져도 실제 리소스가 존재하지 않을 수 있음
+		 * 
+		 */
+		private Resource sqlMap = new ClassPathResource("sqlmap.xml", UserDao.class);
+		
 		public void setUnmarshaller(Unmarshaller unmarshaller) {
 			this.unmarshaller = unmarshaller;
+		}
+
+		public void setSqlMap(Resource sqlMap) {
+			this.sqlMap = sqlMap;
 		}
 
 		public void setSqlMapFile(String sqlMapFile) {
@@ -114,7 +155,11 @@ public class OxmSqlService implements SqlService {
 		@Override
 		public void read(SqlRegistry sqlRegistry) {			
 			try {
-				Source source = new StreamSource(UserDao.class.getResourceAsStream(this.sqlMapFile));
+				// 리소스틔 종류에 관계없이 stream을 가져오도록 함
+				//Source source = new StreamSource(UserDao.class.getResourceAsStream(this.sqlMapFile));
+				Source source = new StreamSource(this.sqlMap.getInputStream());
+				
+				
 				// OxmSqlService를 통해 전달받은 OXM interface 구현오브젝트로 unmarshalling 작업 수행
 				Sqlmap sqlmap = (Sqlmap) this.unmarshaller.unmarshal(source);
 				
@@ -123,7 +168,8 @@ public class OxmSqlService implements SqlService {
 				}
 				
 			} catch (XmlMappingException | IOException e) {
-				throw new IllegalArgumentException(this.sqlMapFile + "을 가져올 수 없습니다.", e);
+				//throw new IllegalArgumentException(this.sqlMapFile + "을 가져올 수 없습니다.", e);
+				throw new IllegalArgumentException(this.sqlMap.getFilename() + "을 가져올 수 없습니다.", e);
 			}
 			
 		}

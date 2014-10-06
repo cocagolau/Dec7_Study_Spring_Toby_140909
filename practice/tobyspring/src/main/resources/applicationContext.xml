@@ -53,6 +53,11 @@
 	<!-- <bean id="sqlService" class="me.dec7.user.sqlservice.DefaultSqlService" /> -->
 	<bean id="sqlService" class="me.dec7.user.sqlservice.OxmSqlService">
 		<property name="unmarshaller" ref="unmarshaller" />
+		<!-- 
+			classpath는 기본값이므로 생략 가능
+			클래스패스 위치 지정시 루트부터 절대위치를 적어야 함
+		-->
+		<property name="sqlMap" value="classpath:me/dec7/user/dao/sqlmap.xml" />
 	</bean>
 	
 	<bean id="unmarshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
