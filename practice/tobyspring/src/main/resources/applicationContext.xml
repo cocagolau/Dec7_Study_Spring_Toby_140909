@@ -5,7 +5,9 @@
 	xmlns:tx="http://www.springframework.org/schema/tx"
 	xmlns:aop="http://www.springframework.org/schema/aop"
 	xmlns:context="http://www.springframework.org/schema/context"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-4.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
 		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd
 		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
@@ -17,6 +19,20 @@
 		<property name="password" value="book" />
 	</bean>
 	
+	<!-- 
+		spring에서 간단히 내장형 DB를 이용시 EmbeddedDatabaseBuilder를 사용하면 됨
+		또한 적절한 메소드를 호출해주는 초기화 코드 필요
+		 - 팩토리 빈으로 만들면 좋음
+		 
+		팩토리 빈을 만드는 전용태그 존재
+		
+		jdbc:embedded-database 태그에 의해 만들어지는 EmbeddedDatabase 타입 빈은
+		스프링 컨테이너가 종료될 때 자동으로 shutdown() 메소드가 호출됨
+		따라서 내장형 DB를 종료하기 위한 별도의 코드는 필요 없음
+	 -->
+	<jdbc:embedded-database id="embeddedDatabase" type="H2">
+		<jdbc:script location="classpath:/sql/query/sqlRegistrySchema.sql" />
+	</jdbc:embedded-database>
 	
 	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="dataSource" />
@@ -50,6 +66,11 @@
 		<property name="sqlService" ref="sqlService" />
 	</bean>
 	
+	<!-- <bean id="sqlRegistry" class="me.dec7.user.sqlservice.ConcurrentHashMapSqlRegistry" /> -->
+	<bean id="sqlRegistry" class="me.dec7.issuetracker.sqlservice.updatable.EmbeddedDbSqlRegistry">
+		<property name="dataSource" ref="embeddedDatabase" />
+	</bean>
+	
 	<!-- <bean id="sqlService" class="me.dec7.user.sqlservice.DefaultSqlService" /> -->
 	<bean id="sqlService" class="me.dec7.user.sqlservice.OxmSqlService">
 		<property name="unmarshaller" ref="unmarshaller" />
@@ -58,6 +79,9 @@
 			클래스패스 위치 지정시 루트부터 절대위치를 적어야 함
 		-->
 		<property name="sqlMap" value="classpath:me/dec7/user/dao/sqlmap.xml" />
+		
+		<!-- default sqlRegistry에서 ConcurrentHashMapSqlRegistry로 변경 -->
+		<property name="sqlRegistry" ref="sqlRegistry" />
 	</bean>
 	
 	<bean id="unmarshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">

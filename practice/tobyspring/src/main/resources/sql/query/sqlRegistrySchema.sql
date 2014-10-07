@@ -1,0 +1,5 @@
+-- KEY, SQL모두 일반적으로 DB에서 키워드로 사용되므로 _(밑줄) 사용
+CREATE TABLE SQLMAP (
+	KEY_ VARCHAR(100) PRIMARY KEY,
+	SQL_ VARCHAR(100) NOT NULL
+);
